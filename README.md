@@ -1,16 +1,46 @@
-# React + Vite
+# Service Desk — Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Front-end React (Vite) do sistema de chamados/tickets de suporte técnico.
+Consome a API em `backend/`. Documentação completa da arquitetura, portas,
+CORS, banco de dados e produção (PM2 + Nginx) está no
+**[README do backend](backend/README.md)**.
 
-Currently, two official plugins are available:
+## Rodando localmente
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+```bash
+npm install
+npm run dev   # http://localhost:5173
+```
 
-## React Compiler
+Requer a API rodando em `http://localhost:3000` (ver README do backend).
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Estrutura de `src/`
 
-## Expanding the ESLint configuration
+```
+auth/        Context API de autenticação (login, logout, token, usuário logado)
+routes/      react-router-dom + RotaPrivada (protege rotas por login/papel)
+services/    instância única do axios (api.js) + um módulo por recurso da API
+views/       páginas completas (Login, Home, Tickets, Usuários, ...)
+components/  UI reutilizável (Botao, InputField, StatusBadge, CrudTable, ...)
+layouts/     AppLayout: sidebar + header + footer das telas autenticadas
+store/       estado global além do auth (notificações/toasts)
+configs/     URL da API por ambiente (dev/prod)
+constants/   labels e cores de exibição (status, papel)
+enum/        StatusTicket, PapelUsuario
+utils/       formatação de data, validação de formulário
+```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Perfis de usuário
+
+- **ADMIN**: acesso total, inclusive cadastro de usuários/departamentos/
+  categorias/prioridades.
+- **TECNICO**: gerencia chamados (status, atribuição), equipamentos e base
+  de conhecimento.
+- **SOLICITANTE**: abre chamados e acompanha os próprios.
+
+## Tailwind CSS
+
+Escolhido em vez de Bootstrap por integrar via plugin nativo do Vite
+(`@tailwindcss/vite`, sem build step extra) e por permitir montar os
+componentes de `components/` (tabelas, badges, formulários) com classes
+utilitárias direto no JSX, sem escrever CSS à parte para cada tela.

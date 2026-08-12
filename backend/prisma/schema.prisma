@@ -1,0 +1,138 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum PapelUsuario {
+  ADMIN
+  TECNICO
+  SOLICITANTE
+}
+
+enum StatusTicket {
+  ABERTO
+  EM_ANDAMENTO
+  FECHADO
+}
+
+model Usuario {
+  id             Int          @id @default(autoincrement())
+  nome           String
+  email          String       @unique
+  senhaHash      String
+  papel          PapelUsuario @default(SOLICITANTE)
+  ativo          Boolean      @default(true)
+  departamentoId Int?
+  departamento   Departamento? @relation(fields: [departamentoId], references: [id])
+  createdAt      DateTime     @default(now())
+
+  ticketsSolicitados Ticket[]           @relation("TicketSolicitante")
+  ticketsAtribuidos  Ticket[]           @relation("TicketTecnico")
+  comentarios        Comentario[]
+  equipamentos       Equipamento[]
+  artigos            BaseConhecimento[]
+
+  @@map("usuarios")
+}
+
+model Departamento {
+  id        Int     @id @default(autoincrement())
+  nome      String
+  descricao String?
+
+  usuarios     Usuario[]
+  equipamentos Equipamento[]
+
+  @@map("departamentos")
+}
+
+model Categoria {
+  id        Int     @id @default(autoincrement())
+  nome      String
+  descricao String?
+
+  tickets Ticket[]
+  artigos BaseConhecimento[]
+
+  @@map("categorias")
+}
+
+model Prioridade {
+  id       Int    @id @default(autoincrement())
+  nome     String
+  nivel    Int
+  slaHoras Int
+
+  tickets Ticket[]
+
+  @@map("prioridades")
+}
+
+model Equipamento {
+  id             Int           @id @default(autoincrement())
+  nome           String
+  tipo           String
+  numeroSerie    String        @unique
+  usuarioId      Int?
+  usuario        Usuario?      @relation(fields: [usuarioId], references: [id])
+  departamentoId Int?
+  departamento   Departamento? @relation(fields: [departamentoId], references: [id])
+
+  tickets Ticket[]
+
+  @@map("equipamentos")
+}
+
+model Ticket {
+  id            Int          @id @default(autoincrement())
+  titulo        String
+  descricao     String
+  status        StatusTicket @default(ABERTO)
+  solicitanteId Int
+  solicitante   Usuario      @relation("TicketSolicitante", fields: [solicitanteId], references: [id])
+  tecnicoId     Int?
+  tecnico       Usuario?     @relation("TicketTecnico", fields: [tecnicoId], references: [id])
+  categoriaId   Int
+  categoria     Categoria    @relation(fields: [categoriaId], references: [id])
+  prioridadeId  Int
+  prioridade    Prioridade   @relation(fields: [prioridadeId], references: [id])
+  equipamentoId Int?
+  equipamento   Equipamento? @relation(fields: [equipamentoId], references: [id])
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  closedAt      DateTime?
+
+  comentarios Comentario[]
+
+  @@map("tickets")
+}
+
+model Comentario {
+  id        Int      @id @default(autoincrement())
+  ticketId  Int
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  usuarioId Int
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id])
+  mensagem  String
+  createdAt DateTime @default(now())
+
+  @@map("comentarios")
+}
+
+model BaseConhecimento {
+  id          Int        @id @default(autoincrement())
+  titulo      String
+  conteudo    String
+  categoriaId Int?
+  categoria   Categoria? @relation(fields: [categoriaId], references: [id])
+  autorId     Int
+  autor       Usuario    @relation(fields: [autorId], references: [id])
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@map("base_conhecimento")
+}
