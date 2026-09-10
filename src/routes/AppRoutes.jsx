@@ -3,6 +3,8 @@ import { useAuth } from "../auth/AuthContext";
 import AppLayout from "../layouts/AppLayout";
 
 import Login from "../views/Login";
+import Cadastro from "../views/Cadastro";
+import EsqueciSenha from "../views/EsqueciSenha";
 import Home from "../views/Home";
 import Tickets from "../views/Tickets";
 import NovoTicket from "../views/NovoTicket";
@@ -25,6 +27,8 @@ export default function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={<Login />} />
+      <Route path="/cadastro" element={<Cadastro />} />
+      <Route path="/esqueci-senha" element={<EsqueciSenha />} />
 
       <Route
         element={

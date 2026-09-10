@@ -30,6 +30,13 @@ model Usuario {
   departamento   Departamento? @relation(fields: [departamentoId], references: [id])
   createdAt      DateTime     @default(now())
 
+  resetTokenHash      String?
+  resetTokenExpiresAt DateTime?
+
+  emailVerificado            Boolean   @default(true)
+  verificacaoTokenHash       String?
+  verificacaoTokenExpiresAt  DateTime?
+
   ticketsSolicitados Ticket[]           @relation("TicketSolicitante")
   ticketsAtribuidos  Ticket[]           @relation("TicketTecnico")
   comentarios        Comentario[]

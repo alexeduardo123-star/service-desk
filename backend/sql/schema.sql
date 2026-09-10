@@ -19,7 +19,12 @@ CREATE TABLE usuarios (
     papel           papel_usuario NOT NULL DEFAULT 'SOLICITANTE',
     ativo           BOOLEAN NOT NULL DEFAULT TRUE,
     departamento_id INTEGER REFERENCES departamentos (id),
-    created_at      TIMESTAMP NOT NULL DEFAULT NOW()
+    created_at      TIMESTAMP NOT NULL DEFAULT NOW(),
+    reset_token_hash       TEXT,
+    reset_token_expires_at TIMESTAMP,
+    email_verificado             BOOLEAN NOT NULL DEFAULT TRUE,
+    verificacao_token_hash       TEXT,
+    verificacao_token_expires_at TIMESTAMP
 );
 
 CREATE TABLE categorias (

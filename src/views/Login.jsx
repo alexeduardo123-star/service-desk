@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import Botao from "../components/Botao";
 import InputField from "../components/InputField";
@@ -11,6 +11,8 @@ export default function Login() {
   const [carregando, setCarregando] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const senhaRedefinida = location.state?.senhaRedefinida;
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -20,6 +22,10 @@ export default function Login() {
       await login(email, senha);
       navigate("/home");
     } catch (err) {
+      if (err.response?.data?.emailNaoVerificado) {
+        navigate("/cadastro", { state: { verificar: true, email } });
+        return;
+      }
       setErro(err.response?.data?.erro || "Não foi possível entrar. Tente novamente.");
     } finally {
       setCarregando(false);
@@ -31,6 +37,12 @@ export default function Login() {
       <form onSubmit={handleSubmit} className="w-full max-w-sm rounded-lg bg-white p-8 shadow-md">
         <h1 className="mb-1 text-xl font-bold text-gray-900">Service Desk</h1>
         <p className="mb-6 text-sm text-gray-500">Entre com sua conta para continuar</p>
+
+        {senhaRedefinida && (
+          <p className="mb-4 text-sm text-green-700">
+            Senha redefinida com sucesso. Entre com sua nova senha.
+          </p>
+        )}
 
         <div className="flex flex-col gap-4">
           <InputField
@@ -54,6 +66,15 @@ export default function Login() {
         <Botao type="submit" className="mt-6 w-full" disabled={carregando}>
           {carregando ? "Entrando…" : "Entrar"}
         </Botao>
+
+        <div className="mt-4 flex items-center justify-between text-sm">
+          <Link to="/esqueci-senha" className="text-blue-600 hover:underline">
+            Esqueci minha senha
+          </Link>
+          <Link to="/cadastro" className="font-medium text-blue-600 hover:underline">
+            Criar conta
+          </Link>
+        </div>
 
         <p className="mt-4 text-xs text-gray-400">
           admin@servicedesk.com / tecnico@servicedesk.com / usuario@servicedesk.com — senha: 123456

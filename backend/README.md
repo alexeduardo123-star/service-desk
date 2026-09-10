@@ -97,12 +97,29 @@ que é o formato pedido na disciplina — o arquivo `sql/schema.sql` traz o
 ## Autenticação (JWT)
 
 - `POST /auth/login` e `POST /auth/registro` (público) retornam um token JWT
-  contendo `{ id, nome, papel }`.
+  contendo `{ id, nome, papel }`. Qualquer pessoa pode se cadastrar por
+  `/auth/registro` (perfil `SOLICITANTE` por padrão).
 - O front envia esse token em `Authorization: Bearer <token>` (interceptor do
   axios em `src/services/api.js`).
 - `src/middlewares/auth.js` expõe `authMiddleware` (valida o token) e
   `requireRole(...papeis)` (autorização por perfil: `ADMIN`, `TECNICO`,
   `SOLICITANTE`), aplicados nas rotas de cada recurso.
+
+### Recuperação de senha (esqueci minha senha)
+
+- `POST /auth/esqueci-senha` `{ email }` (público): se o email existir e
+  estiver ativo, gera um código numérico de 6 dígitos, salva o hash dele
+  (`usuarios.resetTokenHash`/`resetTokenExpiresAt`, expira em 15 min) e envia
+  por email via `src/utils/mailer.js`. Sempre responde com a mesma mensagem
+  genérica, exista ou não o email, para não revelar quais contas estão
+  cadastradas.
+- `POST /auth/redefinir-senha` `{ email, codigo, novaSenha }` (público):
+  valida o código (compara hash) e a expiração, e caso válido atualiza
+  `senhaHash` e limpa o token.
+- Envio de email: configurável via `SMTP_HOST`/`SMTP_PORT`/`SMTP_USER`/
+  `SMTP_PASS`/`SMTP_FROM` no `.env`. Sem SMTP configurado, o email é apenas
+  impresso no console do backend (modo desenvolvimento) — útil para testar o
+  fluxo localmente sem uma conta de email real.
 
 ## Como o CORS funciona aqui
 
@@ -120,7 +137,7 @@ Em produção, esse valor muda para o domínio real do front.
 ## Rotas principais
 
 ```
-POST   /auth/login | /auth/registro
+POST   /auth/login | /auth/registro | /auth/esqueci-senha | /auth/redefinir-senha
 GET    /usuarios/me
 GET|POST|PUT|DELETE  /usuarios | /departamentos | /categorias | /prioridades | /equipamentos
 GET|POST|PUT|DELETE  /tickets

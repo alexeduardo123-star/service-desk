@@ -12,12 +12,25 @@ export function AuthProvider({ children }) {
   const [usuario, setUsuario] = useState(usuarioSalvo);
   const [token, setToken] = useState(localStorage.getItem("token"));
 
-  async function login(email, senha) {
-    const data = await authService.login(email, senha);
+  function salvarSessao(data) {
     localStorage.setItem("token", data.token);
     localStorage.setItem("usuario", JSON.stringify(data.usuario));
     setToken(data.token);
     setUsuario(data.usuario);
+  }
+
+  async function login(email, senha) {
+    const data = await authService.login(email, senha);
+    salvarSessao(data);
+  }
+
+  async function registrar(nome, email, senha) {
+    return authService.registrar(nome, email, senha);
+  }
+
+  async function verificarEmail(email, codigo) {
+    const data = await authService.verificarEmail(email, codigo);
+    salvarSessao(data);
   }
 
   function logout() {
@@ -30,7 +43,7 @@ export function AuthProvider({ children }) {
   const logado = Boolean(token);
 
   return (
-    <AuthContext.Provider value={{ logado, usuario, token, login, logout }}>
+    <AuthContext.Provider value={{ logado, usuario, token, login, registrar, verificarEmail, logout }}>
       {children}
     </AuthContext.Provider>
   );
