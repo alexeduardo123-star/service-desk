@@ -1,8 +1,8 @@
 # Service Desk — Backend (API)
 
 Sistema de chamados/tickets de suporte técnico. Esta pasta é a API
-(Node.js + Express + PostgreSQL); o front-end (React + Vite) fica na raiz
-deste mesmo repositório.
+(Node.js + Express + PostgreSQL); o front-end (React + Vite) fica em
+`../frontend/` deste mesmo repositório.
 
 ## Arquitetura cliente-servidor
 
@@ -74,7 +74,7 @@ Usuários de teste (senha `123456` para todos):
 ### 3. Frontend
 
 ```bash
-cd ..
+cd ../frontend
 npm install
 npm run dev                 # vite, porta 5173
 ```
@@ -100,7 +100,7 @@ que é o formato pedido na disciplina — o arquivo `sql/schema.sql` traz o
   contendo `{ id, nome, papel }`. Qualquer pessoa pode se cadastrar por
   `/auth/registro` (perfil `SOLICITANTE` por padrão).
 - O front envia esse token em `Authorization: Bearer <token>` (interceptor do
-  axios em `src/services/api.js`).
+  axios em `../frontend/src/services/api.js`).
 - `src/middlewares/auth.js` expõe `authMiddleware` (valida o token) e
   `requireRole(...papeis)` (autorização por perfil: `ADMIN`, `TECNICO`,
   `SOLICITANTE`), aplicados nas rotas de cada recurso.
