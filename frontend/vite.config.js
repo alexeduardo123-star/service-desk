@@ -9,6 +9,12 @@ export default defineConfig({
     port: 5173,
     strictPort: true,
   },
+  build: {
+    // A raiz do repo tem um dist/ versionado (fora do frontend/.gitignore)
+    // para quem clonar já ter o build pronto sem precisar rodar `npm run build`.
+    outDir: '../dist',
+    emptyOutDir: true,
+  },
   test: {
     environment: 'jsdom',
     globals: true,
