@@ -110,15 +110,29 @@ demonstrando as mesmas 8 tabelas + os 2 ALTER TABLE de `usuarios`
 (verificação de email e recuperação de senha) no formato do `sequelize-cli`,
 sem duplicar a camada de acesso a dados da aplicação.
 
-```bash
-cd backend
-npx sequelize-cli db:migrate          # aplica migrations/*.cjs
-npx sequelize-cli db:migrate:status   # lista o que já rodou
-npx sequelize-cli db:migrate:undo:all # reverte tudo
-```
+> ⚠️ **Não rode isso contra o banco `servicedesk` que a API usa.** As tabelas
+> lá já existem (criadas pelo Prisma) e o `sequelize-cli` vai tentar recriá-las,
+> quebrando no meio e sujando a tabela de controle `SequelizeMeta`. Rode num
+> banco separado, só pra essa demonstração:
+>
+> ```bash
+> sudo -u postgres createdb servicedesk_sequelize -O servicedesk_user
+> cd backend
+> DATABASE_URL="postgresql://servicedesk_user:servicedesk_pw@localhost:5432/servicedesk_sequelize" npx sequelize-cli db:migrate
+> DATABASE_URL="postgresql://servicedesk_user:servicedesk_pw@localhost:5432/servicedesk_sequelize" npx sequelize-cli db:migrate:status
+> DATABASE_URL="postgresql://servicedesk_user:servicedesk_pw@localhost:5432/servicedesk_sequelize" npx sequelize-cli db:migrate:undo:all
+> ```
+>
+> (Se rodar sem o `DATABASE_URL=...` na frente, ele usa o `.env` normal — ou
+> seja, o banco real da API. Foi isso que causou uma vez o erro `column
+> "emailVerificado" ... already exists`: rodar contra o banco de produção do
+> Prisma. Se acontecer de novo, o conserto é `DROP TABLE "SequelizeMeta";` no
+> banco real — as outras tabelas não são afetadas, o Sequelize só chega a
+> mexer nelas se o `createTable` conseguir rodar.)
 
-- Usa a mesma `DATABASE_URL` do `.env` (ver `config/config.cjs`) — não precisa
-  configurar credenciais separadas.
+- Usa a mesma `DATABASE_URL` do `.env` (ver `config/config.cjs`) quando
+  apontada pra um banco próprio como acima — não precisa configurar
+  credenciais separadas, só o nome do banco.
 - `migrations/` tem uma migration por migration do Prisma (mesmo timestamp no
   nome, pra ficar fácil de comparar uma com a outra):
   `20260812224822` (schema inicial) → `20260831201500` (verificação de email)
