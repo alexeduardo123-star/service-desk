@@ -15,6 +15,13 @@ npm run dev   # http://localhost:5173
 
 Requer a API rodando em `http://localhost:3000` (ver README do backend).
 
+## Testes e lint
+
+```bash
+npm test    # vitest — utils e componentes
+npm run lint
+```
+
 ## Estrutura de `src/`
 
 ```
