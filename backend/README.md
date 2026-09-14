@@ -62,9 +62,17 @@ node prisma/seed.js         # popula usuários/categorias/prioridades de teste
 npm run dev                 # nodemon server.js, porta 3000
 ```
 
-Alternativa sem ORM: `psql -U servicedesk_user -d servicedesk -f sql/schema.sql`
-cria as tabelas diretamente via SQL puro (script equivalente ao
-`prisma/schema.prisma`, entregue para fins de avaliação).
+Alternativas ao `prisma migrate dev`, entregues para fins de avaliação da
+disciplina (a API em si continua rodando sobre o Prisma Client):
+
+- **SQL puro**: `psql -U servicedesk_user -d servicedesk -f sql/schema.sql`
+  cria as tabelas diretamente, sem ORM.
+- **Sequelize CLI**: `npx sequelize-cli db:migrate` cria as mesmas tabelas via
+  `migrations/` (ver seção própria abaixo).
+
+As três formas (Prisma Migrate, SQL puro, Sequelize CLI) resultam num schema
+equivalente — validado comparando o `pg_dump --schema-only` de bancos de
+teste criados por cada uma.
 
 Usuários de teste (senha `123456` para todos):
 - `admin@servicedesk.com` (ADMIN)
@@ -93,6 +101,37 @@ Optou-se por **Prisma** (sobre `pg` puro ou Sequelize) porque:
 Como contrapartida — e para deixar explícito o modelo relacional em SQL puro,
 que é o formato pedido na disciplina — o arquivo `sql/schema.sql` traz o
 `CREATE TABLE` equivalente de cada tabela, independente do Prisma.
+
+## Sequelize CLI (migrations — pedido pelo professor)
+
+A API continua rodando sobre o **Prisma Client** (controllers, queries,
+`server.js`) — o Sequelize aqui entra só como ferramenta de migrations,
+demonstrando as mesmas 8 tabelas + os 2 ALTER TABLE de `usuarios`
+(verificação de email e recuperação de senha) no formato do `sequelize-cli`,
+sem duplicar a camada de acesso a dados da aplicação.
+
+```bash
+cd backend
+npx sequelize-cli db:migrate          # aplica migrations/*.cjs
+npx sequelize-cli db:migrate:status   # lista o que já rodou
+npx sequelize-cli db:migrate:undo:all # reverte tudo
+```
+
+- Usa a mesma `DATABASE_URL` do `.env` (ver `config/config.cjs`) — não precisa
+  configurar credenciais separadas.
+- `migrations/` tem uma migration por migration do Prisma (mesmo timestamp no
+  nome, pra ficar fácil de comparar uma com a outra):
+  `20260812224822` (schema inicial) → `20260831201500` (verificação de email)
+  → `20260831223923` (recuperação de senha).
+- Diferenças esperadas em relação ao schema do Prisma (cosméticas, não
+  afetam a estrutura): o Sequelize cria um tipo ENUM por coluna
+  (`enum_usuarios_papel`, `enum_tickets_status`) em vez de tipos nomeados
+  compartilhados (`PapelUsuario`, `StatusTicket`), usa `TIMESTAMP WITH TIME
+  ZONE` em vez de `TIMESTAMP(3)`, e nomeia as constraints de forma diferente.
+  Validado rodando as migrations num banco de teste à parte e comparando o
+  `pg_dump --schema-only` com o gerado pelo Prisma.
+- Não há `models/` — como só as migrations foram pedidas, não existe uma
+  segunda camada Sequelize de acesso a dados coexistindo com o Prisma Client.
 
 ## Autenticação (JWT)
 
