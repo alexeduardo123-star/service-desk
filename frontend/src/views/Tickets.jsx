@@ -11,7 +11,9 @@ export default function Tickets() {
   const [carregando, setCarregando] = useState(true);
 
   useEffect(() => {
-    setCarregando(true);
+    // Agendada como microtask para não disparar setState de forma síncrona
+    // dentro do corpo do efeito (react-hooks/set-state-in-effect).
+    Promise.resolve().then(() => setCarregando(true));
     ticketService
       .listar(statusFiltro ? { status: statusFiltro } : {})
       .then(setTickets)

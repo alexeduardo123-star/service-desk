@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import CrudTable from "../components/CrudTable";
 import equipamentoService from "../services/equipamentoService";
 import departamentoService from "../services/departamentoService";
-import { useAuth } from "../auth/AuthContext";
+import { useAuth } from "../auth/useAuth";
 import { PapelUsuario } from "../enum/PapelUsuario";
 
 export default function Equipamentos() {

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { useAuth } from "../auth/AuthContext";
+import { useAuth } from "../auth/useAuth";
 import * as authService from "../services/authService";
 import Botao from "../components/Botao";
 import InputField from "../components/InputField";

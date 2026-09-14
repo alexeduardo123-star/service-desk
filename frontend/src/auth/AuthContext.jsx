@@ -1,7 +1,6 @@
-import { createContext, useContext, useState } from "react";
+import { useState } from "react";
 import * as authService from "../services/authService";
-
-const AuthContext = createContext();
+import { AuthContext } from "./authContext";
 
 function usuarioSalvo() {
   const raw = localStorage.getItem("usuario");
@@ -47,8 +46,4 @@ export function AuthProvider({ children }) {
       {children}
     </AuthContext.Provider>
   );
-}
-
-export function useAuth() {
-  return useContext(AuthContext);
 }

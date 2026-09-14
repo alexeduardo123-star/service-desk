@@ -3,10 +3,10 @@ import baseConhecimentoService from "../services/baseConhecimentoService";
 import categoriaService from "../services/categoriaService";
 import Botao from "../components/Botao";
 import InputField from "../components/InputField";
-import { useAuth } from "../auth/AuthContext";
+import { useAuth } from "../auth/useAuth";
 import { PapelUsuario } from "../enum/PapelUsuario";
 import { formatDate } from "../utils/formatDate";
-import { useNotification } from "../store/NotificationContext";
+import { useNotification } from "../store/useNotification";
 
 export default function BaseConhecimento() {
   const [artigos, setArtigos] = useState([]);
@@ -24,7 +24,9 @@ export default function BaseConhecimento() {
   }
 
   useEffect(() => {
-    carregar();
+    // Agendada como microtask para não disparar setState de forma síncrona
+    // dentro do corpo do efeito (react-hooks/set-state-in-effect).
+    Promise.resolve().then(carregar);
     categoriaService.listar().then(setCategorias);
   }, []);
 

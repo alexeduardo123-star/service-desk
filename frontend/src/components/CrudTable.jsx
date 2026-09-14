@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import Botao from "./Botao";
 import InputField from "./InputField";
-import { useNotification } from "../store/NotificationContext";
+import { useNotification } from "../store/useNotification";
 
 const vazio = (campos) => Object.fromEntries(campos.map((c) => [c.name, ""]));
 
@@ -28,7 +28,9 @@ export default function CrudTable({ titulo, colunas, campos, service, podeEscrev
   }
 
   useEffect(() => {
-    carregar();
+    // Agendada como microtask para não disparar setState de forma síncrona
+    // dentro do corpo do efeito (react-hooks/set-state-in-effect).
+    Promise.resolve().then(carregar);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

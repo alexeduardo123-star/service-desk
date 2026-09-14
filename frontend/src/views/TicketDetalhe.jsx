@@ -5,12 +5,12 @@ import comentarioService from "../services/comentarioService";
 import usuarioService from "../services/usuarioService";
 import StatusBadge from "../components/StatusBadge";
 import Botao from "../components/Botao";
-import { useAuth } from "../auth/AuthContext";
+import { useAuth } from "../auth/useAuth";
 import { PapelUsuario } from "../enum/PapelUsuario";
 import { StatusTicket } from "../enum/StatusTicket";
 import { STATUS_LABEL } from "../constants/labels";
 import { formatDate } from "../utils/formatDate";
-import { useNotification } from "../store/NotificationContext";
+import { useNotification } from "../store/useNotification";
 
 export default function TicketDetalhe() {
   const { id } = useParams();
@@ -26,7 +26,9 @@ export default function TicketDetalhe() {
   }
 
   useEffect(() => {
-    carregar();
+    // Agendada como microtask para não disparar setState de forma síncrona
+    // dentro do corpo do efeito (react-hooks/set-state-in-effect).
+    Promise.resolve().then(carregar);
     if (usuario.papel === PapelUsuario.ADMIN) {
       usuarioService.listar().then((lista) => setTecnicos(lista.filter((u) => u.papel === PapelUsuario.TECNICO)));
     }

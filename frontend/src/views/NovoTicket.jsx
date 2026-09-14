@@ -6,7 +6,7 @@ import prioridadeService from "../services/prioridadeService";
 import equipamentoService from "../services/equipamentoService";
 import InputField from "../components/InputField";
 import Botao from "../components/Botao";
-import { useNotification } from "../store/NotificationContext";
+import { useNotification } from "../store/useNotification";
 
 export default function NovoTicket() {
   const [titulo, setTitulo] = useState("");
