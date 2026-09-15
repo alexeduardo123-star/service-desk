@@ -110,19 +110,22 @@ demonstrando as mesmas 8 tabelas + os 2 ALTER TABLE de `usuarios`
 (verificação de email e recuperação de senha) no formato do `sequelize-cli`,
 sem duplicar a camada de acesso a dados da aplicação.
 
-> ⚠️ **Não rode isso contra o banco `servicedesk` que a API usa.** Rode num
-> banco separado, só pra essa demonstração:
+> ⚠️ **Não rode isso contra o banco `servicedesk` que a API usa.** Use os
+> scripts `sequelize:demo:*` abaixo — eles já apontam pro banco separado
+> `servicedesk_sequelize`, sem precisar passar `DATABASE_URL` na mão:
 >
 > ```bash
-> sudo -u postgres createdb servicedesk_sequelize -O servicedesk_user
+> sudo -u postgres createdb servicedesk_sequelize -O servicedesk_user  # só na primeira vez
 > cd backend
-> DATABASE_URL="postgresql://servicedesk_user:servicedesk_pw@localhost:5432/servicedesk_sequelize" npx sequelize-cli db:migrate
-> DATABASE_URL="postgresql://servicedesk_user:servicedesk_pw@localhost:5432/servicedesk_sequelize" npx sequelize-cli db:migrate:status
-> DATABASE_URL="postgresql://servicedesk_user:servicedesk_pw@localhost:5432/servicedesk_sequelize" npx sequelize-cli db:migrate:undo:all
+> npm run sequelize:demo:migrate   # aplica as 3 migrations
+> npm run sequelize:demo:status    # lista o que já rodou
+> npm run sequelize:demo:undo      # reverte tudo
 > ```
 >
-> Se rodar sem o `DATABASE_URL=...` na frente, ele usa o `.env` normal — ou
-> seja, o banco real da API. **Cuidado**: `queryInterface.createTable` do
+> `npm run sequelize:migrate` (sem `:demo`) usa o `DATABASE_URL` do `.env` —
+> ou seja, o banco real da API — **de propósito não deve ser usado** aqui;
+> se rodar assim, a migration inicial barra sozinha com um erro claro (ver
+> abaixo). **Cuidado**: `queryInterface.createTable` do
 > Sequelize gera `CREATE TABLE IF NOT EXISTS`, então se as tabelas já
 > existirem (caso do banco real, criado pelo Prisma) ele **não dá erro** —
 > ignora a criação silenciosamente e segue pros próximos passos da migration

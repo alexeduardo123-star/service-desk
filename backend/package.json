@@ -10,6 +10,9 @@
     "prisma:seed": "node prisma/seed.js",
     "sequelize:migrate": "sequelize-cli db:migrate",
     "sequelize:migrate:undo": "sequelize-cli db:migrate:undo:all",
+    "sequelize:demo:migrate": "cross-env DATABASE_URL=postgresql://servicedesk_user:servicedesk_pw@localhost:5432/servicedesk_sequelize sequelize-cli db:migrate",
+    "sequelize:demo:status": "cross-env DATABASE_URL=postgresql://servicedesk_user:servicedesk_pw@localhost:5432/servicedesk_sequelize sequelize-cli db:migrate:status",
+    "sequelize:demo:undo": "cross-env DATABASE_URL=postgresql://servicedesk_user:servicedesk_pw@localhost:5432/servicedesk_sequelize sequelize-cli db:migrate:undo:all",
     "test": "vitest run"
   },
   "keywords": [],
@@ -31,6 +34,7 @@
     "zod": "^4.5.4"
   },
   "devDependencies": {
+    "cross-env": "^10.1.0",
     "nodemon": "^3.1.14",
     "prisma": "^6.19.3",
     "sequelize-cli": "^6.6.5",
