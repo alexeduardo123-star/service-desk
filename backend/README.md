@@ -110,9 +110,7 @@ demonstrando as mesmas 8 tabelas + os 2 ALTER TABLE de `usuarios`
 (verificação de email e recuperação de senha) no formato do `sequelize-cli`,
 sem duplicar a camada de acesso a dados da aplicação.
 
-> ⚠️ **Não rode isso contra o banco `servicedesk` que a API usa.** As tabelas
-> lá já existem (criadas pelo Prisma) e o `sequelize-cli` vai tentar recriá-las,
-> quebrando no meio e sujando a tabela de controle `SequelizeMeta`. Rode num
+> ⚠️ **Não rode isso contra o banco `servicedesk` que a API usa.** Rode num
 > banco separado, só pra essa demonstração:
 >
 > ```bash
@@ -123,12 +121,21 @@ sem duplicar a camada de acesso a dados da aplicação.
 > DATABASE_URL="postgresql://servicedesk_user:servicedesk_pw@localhost:5432/servicedesk_sequelize" npx sequelize-cli db:migrate:undo:all
 > ```
 >
-> (Se rodar sem o `DATABASE_URL=...` na frente, ele usa o `.env` normal — ou
-> seja, o banco real da API. Foi isso que causou uma vez o erro `column
-> "emailVerificado" ... already exists`: rodar contra o banco de produção do
-> Prisma. Se acontecer de novo, o conserto é `DROP TABLE "SequelizeMeta";` no
-> banco real — as outras tabelas não são afetadas, o Sequelize só chega a
-> mexer nelas se o `createTable` conseguir rodar.)
+> Se rodar sem o `DATABASE_URL=...` na frente, ele usa o `.env` normal — ou
+> seja, o banco real da API. **Cuidado**: `queryInterface.createTable` do
+> Sequelize gera `CREATE TABLE IF NOT EXISTS`, então se as tabelas já
+> existirem (caso do banco real, criado pelo Prisma) ele **não dá erro** —
+> ignora a criação silenciosamente e segue pros próximos passos da migration
+> (índices, `ADD COLUMN`), que aí sim executam de verdade contra as tabelas
+> reais. A migration inicial (`migrations/20260812224822-*.cjs`) tem uma
+> trava no início (`tableExists("departamentos")`) que barra a execução com
+> um erro claro se detectar que já existe schema no banco alvo — mas só
+> funciona se você começar por ela; rodar `db:migrate` a partir de um estado
+> onde só a migration 1 já foi (erroneamente) marcada como aplicada pula
+> essa trava. Se acontecer de novo: `DROP TABLE "SequelizeMeta";` no banco
+> real e confira `\d tickets`/`\d usuarios` no psql — se sobrou algum índice
+> extra (`idx_tickets_*`, `idx_comentarios_ticket`) ou coluna que não devia,
+> derruba com `DROP INDEX`/`ALTER TABLE ... DROP COLUMN`.
 
 - Usa a mesma `DATABASE_URL` do `.env` (ver `config/config.cjs`) quando
   apontada pra um banco próprio como acima — não precisa configurar

@@ -5,6 +5,22 @@
 
 module.exports = {
   async up(queryInterface, Sequelize) {
+    // queryInterface.createTable gera "CREATE TABLE IF NOT EXISTS": se essas
+    // tabelas já existirem (ex.: você apontou DATABASE_URL pro banco real da
+    // API, gerenciado pelo Prisma), o Postgres NÃO acusa erro aqui — ele
+    // ignora a criação silenciosamente e a migration segue em frente,
+    // aplicando os passos seguintes (índices/colunas) contra tabelas que não
+    // são suas. Essa trava impede isso: só roda se o banco estiver vazio.
+    if (await queryInterface.tableExists("departamentos")) {
+      throw new Error(
+        'A tabela "departamentos" já existe neste banco. Você está rodando ' +
+          "esta migration contra o banco errado — DATABASE_URL provavelmente " +
+          "aponta pro banco real da API (gerenciado pelo Prisma). Use um " +
+          "banco separado só pra essa demonstração (ver seção Sequelize CLI " +
+          "no README).",
+      );
+    }
+
     await queryInterface.createTable("departamentos", {
       id: { type: Sequelize.INTEGER, primaryKey: true, autoIncrement: true },
       nome: { type: Sequelize.TEXT, allowNull: false },
