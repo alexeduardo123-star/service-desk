@@ -1,6 +1,7 @@
 import { useState } from "react";
 import * as authService from "../services/authService";
 import { AuthContext } from "./authContext";
+import { limparPreferencias } from "../utils/preferencias";
 
 function usuarioSalvo() {
   const raw = localStorage.getItem("usuario");
@@ -32,9 +33,18 @@ export function AuthProvider({ children }) {
     salvarSessao(data);
   }
 
+  // Atualiza os dados do usuário logado (ex.: depois de editar o perfil) sem
+  // precisar fazer login de novo.
+  function atualizarUsuario(dados) {
+    const atualizado = { ...usuario, ...dados };
+    localStorage.setItem("usuario", JSON.stringify(atualizado));
+    setUsuario(atualizado);
+  }
+
   function logout() {
     localStorage.removeItem("token");
     localStorage.removeItem("usuario");
+    limparPreferencias();
     setToken(null);
     setUsuario(null);
   }
@@ -42,7 +52,7 @@ export function AuthProvider({ children }) {
   const logado = Boolean(token);
 
   return (
-    <AuthContext.Provider value={{ logado, usuario, token, login, registrar, verificarEmail, logout }}>
+    <AuthContext.Provider value={{ logado, usuario, token, login, registrar, verificarEmail, atualizarUsuario, logout }}>
       {children}
     </AuthContext.Provider>
   );
