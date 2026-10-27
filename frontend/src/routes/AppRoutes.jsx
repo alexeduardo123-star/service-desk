@@ -15,6 +15,7 @@ import Departamentos from "../views/Departamentos";
 import Categorias from "../views/Categorias";
 import Prioridades from "../views/Prioridades";
 import Equipamentos from "../views/Equipamentos";
+import Configuracoes from "../views/Configuracoes";
 
 function RotaPrivada({ children, roles }) {
   const { logado, usuario } = useAuth();
@@ -42,6 +43,7 @@ export default function AppRoutes() {
         <Route path="/tickets/novo" element={<NovoTicket />} />
         <Route path="/tickets/:id" element={<TicketDetalhe />} />
         <Route path="/kb" element={<BaseConhecimento />} />
+        <Route path="/configuracoes" element={<Configuracoes />} />
 
         <Route
           path="/admin/equipamentos"

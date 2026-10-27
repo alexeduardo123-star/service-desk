@@ -1,7 +1,10 @@
+import { useEffect } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/useAuth";
 import { PapelUsuario } from "../enum/PapelUsuario";
 import { PAPEL_LABEL } from "../constants/labels";
+import configuracaoService from "../services/configuracaoService";
+import { salvarPreferencias } from "../utils/preferencias";
 
 const linkClasse = ({ isActive }) =>
   `block rounded-md px-3 py-2 text-sm font-medium ${
@@ -13,6 +16,15 @@ export default function AppLayout() {
   const navigate = useNavigate();
   const isAdmin = usuario?.papel === PapelUsuario.ADMIN;
   const isTecnicoOuAdmin = isAdmin || usuario?.papel === PapelUsuario.TECNICO;
+
+  // Carrega as preferências de exibição (fuso, itens por página) do backend
+  // e guarda em cache para o restante do app usar.
+  useEffect(() => {
+    configuracaoService
+      .obter()
+      .then(salvarPreferencias)
+      .catch(() => {});
+  }, []);
 
   function handleLogout() {
     logout();
@@ -47,9 +59,14 @@ export default function AppLayout() {
           <div className="text-sm text-gray-600">
             {usuario?.nome} <span className="text-gray-400">— {PAPEL_LABEL[usuario?.papel]}</span>
           </div>
-          <button onClick={handleLogout} className="text-sm font-medium text-red-600 hover:underline">
-            Sair
-          </button>
+          <div className="flex items-center gap-4">
+            <NavLink to="/configuracoes" className="text-sm font-medium text-gray-600 hover:text-blue-600">
+              Configurações
+            </NavLink>
+            <button onClick={handleLogout} className="text-sm font-medium text-red-600 hover:underline">
+              Sair
+            </button>
+          </div>
         </header>
 
         <main className="flex-1 p-6">
