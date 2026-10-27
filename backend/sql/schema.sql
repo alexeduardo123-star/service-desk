@@ -23,6 +23,8 @@ CREATE TABLE "usuarios" (
     "senhaHash"                   TEXT NOT NULL,
     "papel"                       "PapelUsuario" NOT NULL DEFAULT 'SOLICITANTE',
     "ativo"                       BOOLEAN NOT NULL DEFAULT TRUE,
+    "telefone"                    TEXT,
+    "cargo"                       TEXT,
     "departamentoId"              INTEGER REFERENCES "departamentos" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
     "createdAt"                   TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "resetTokenHash"              TEXT,
@@ -85,6 +87,19 @@ CREATE TABLE "base_conhecimento" (
     "autorId"      INTEGER NOT NULL REFERENCES "usuarios" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
     "createdAt"    TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt"    TIMESTAMP(3) NOT NULL
+);
+
+CREATE TABLE "configuracoes_usuario" (
+    "id"                   SERIAL PRIMARY KEY,
+    "usuarioId"            INTEGER NOT NULL UNIQUE REFERENCES "usuarios" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+    "itensPorPagina"       INTEGER NOT NULL DEFAULT 10,
+    "fusoHorario"          TEXT NOT NULL DEFAULT 'America/Sao_Paulo',
+    "notificarEmail"       BOOLEAN NOT NULL DEFAULT FALSE,
+    "notificarNovoTicket"  BOOLEAN NOT NULL DEFAULT TRUE,
+    "notificarAtribuicao"  BOOLEAN NOT NULL DEFAULT TRUE,
+    "notificarStatus"      BOOLEAN NOT NULL DEFAULT TRUE,
+    "notificarComentario"  BOOLEAN NOT NULL DEFAULT TRUE,
+    "updatedAt"            TIMESTAMP(3) NOT NULL
 );
 
 CREATE INDEX "idx_tickets_solicitante" ON "tickets" ("solicitanteId");

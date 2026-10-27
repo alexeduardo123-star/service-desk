@@ -2,11 +2,51 @@ import bcrypt from "bcryptjs";
 import prisma from "../config/prisma.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
-const semSenha = { id: true, nome: true, email: true, papel: true, ativo: true, departamentoId: true, createdAt: true };
+const semSenha = {
+  id: true,
+  nome: true,
+  email: true,
+  papel: true,
+  ativo: true,
+  telefone: true,
+  cargo: true,
+  departamentoId: true,
+  createdAt: true,
+};
 
 export const me = asyncHandler(async (req, res) => {
-  const usuario = await prisma.usuario.findUnique({ where: { id: req.user.id }, select: semSenha });
+  const usuario = await prisma.usuario.findUnique({
+    where: { id: req.user.id },
+    select: { ...semSenha, departamento: { select: { id: true, nome: true } } },
+  });
   res.json(usuario);
+});
+
+// O próprio usuário edita nome/telefone/cargo. Papel, email e departamento só
+// mudam pelo CRUD de usuários (ADMIN).
+export const atualizarPerfil = asyncHandler(async (req, res) => {
+  const { nome, telefone, cargo } = req.body;
+  const usuario = await prisma.usuario.update({
+    where: { id: req.user.id },
+    data: { nome, telefone: telefone ?? null, cargo: cargo ?? null },
+    select: { ...semSenha, departamento: { select: { id: true, nome: true } } },
+  });
+  res.json(usuario);
+});
+
+export const alterarSenha = asyncHandler(async (req, res) => {
+  const { senhaAtual, novaSenha } = req.body;
+  const usuario = await prisma.usuario.findUnique({ where: { id: req.user.id } });
+  if (!usuario) return res.status(404).json({ erro: "Não encontrado" });
+
+  const confere = await bcrypt.compare(senhaAtual, usuario.senhaHash);
+  if (!confere) return res.status(400).json({ erro: "Senha atual incorreta" });
+
+  await prisma.usuario.update({
+    where: { id: usuario.id },
+    data: { senhaHash: await bcrypt.hash(novaSenha, 10) },
+  });
+  res.json({ mensagem: "Senha alterada com sucesso" });
 });
 
 export const listar = asyncHandler(async (req, res) => {

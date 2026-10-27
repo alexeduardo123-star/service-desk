@@ -26,6 +26,8 @@ model Usuario {
   senhaHash      String
   papel          PapelUsuario @default(SOLICITANTE)
   ativo          Boolean      @default(true)
+  telefone       String?
+  cargo          String?
   departamentoId Int?
   departamento   Departamento? @relation(fields: [departamentoId], references: [id])
   createdAt      DateTime     @default(now())
@@ -42,6 +44,7 @@ model Usuario {
   comentarios        Comentario[]
   equipamentos       Equipamento[]
   artigos            BaseConhecimento[]
+  configuracao       ConfiguracaoUsuario?
 
   @@map("usuarios")
 }
@@ -142,4 +145,20 @@ model BaseConhecimento {
   updatedAt   DateTime   @updatedAt
 
   @@map("base_conhecimento")
+}
+
+model ConfiguracaoUsuario {
+  id                  Int      @id @default(autoincrement())
+  usuarioId           Int      @unique
+  usuario             Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  itensPorPagina      Int      @default(10)
+  fusoHorario         String   @default("America/Sao_Paulo")
+  notificarEmail      Boolean  @default(false)
+  notificarNovoTicket Boolean  @default(true)
+  notificarAtribuicao Boolean  @default(true)
+  notificarStatus     Boolean  @default(true)
+  notificarComentario Boolean  @default(true)
+  updatedAt           DateTime @updatedAt
+
+  @@map("configuracoes_usuario")
 }
