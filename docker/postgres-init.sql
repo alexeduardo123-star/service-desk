@@ -1,0 +1,1 @@
+CREATE DATABASE servicedesk_sequelize OWNER servicedesk_user;

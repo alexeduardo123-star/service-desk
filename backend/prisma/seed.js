@@ -77,25 +77,31 @@ async function main() {
     create: { nome: "Notebook Dell Latitude", tipo: "Notebook", numeroSerie: "NB-0001", usuarioId: solicitante.id, departamentoId: departamentoFinanceiro.id },
   });
 
-  await prisma.ticket.create({
-    data: {
-      titulo: "Notebook não liga",
-      descricao: "Ao pressionar o botão de energia nada acontece.",
-      solicitanteId: solicitante.id,
-      categoriaId: categoriaHardware.id,
-      prioridadeId: prioridadeMedia.id,
-      equipamentoId: equipamento.id,
-    },
-  });
+  // Ticket e artigo não têm campo único para upsert; só cria na primeira
+  // execução para o seed poder rodar de novo sem duplicar.
+  if ((await prisma.ticket.count()) === 0) {
+    await prisma.ticket.create({
+      data: {
+        titulo: "Notebook não liga",
+        descricao: "Ao pressionar o botão de energia nada acontece.",
+        solicitanteId: solicitante.id,
+        categoriaId: categoriaHardware.id,
+        prioridadeId: prioridadeMedia.id,
+        equipamentoId: equipamento.id,
+      },
+    });
+  }
 
-  await prisma.baseConhecimento.create({
-    data: {
-      titulo: "Como resetar a senha de rede",
-      conteudo: "Acesse o portal interno, clique em 'Esqueci minha senha' e siga as instruções enviadas por email.",
-      categoriaId: categoriaHardware.id,
-      autorId: tecnico.id,
-    },
-  });
+  if ((await prisma.baseConhecimento.count()) === 0) {
+    await prisma.baseConhecimento.create({
+      data: {
+        titulo: "Como resetar a senha de rede",
+        conteudo: "Acesse o portal interno, clique em 'Esqueci minha senha' e siga as instruções enviadas por email.",
+        categoriaId: categoriaHardware.id,
+        autorId: tecnico.id,
+      },
+    });
+  }
 
   // Ids foram fixados manualmente acima (upsert por id) para dados de
   // referência estáveis; realinha as sequences do Postgres para que os

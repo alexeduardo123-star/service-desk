@@ -1,0 +1,12 @@
+{
+  "name": "service-desk",
+  "private": true,
+  "description": "Atalhos para subir banco, backend e frontend juntos",
+  "scripts": {
+    "setup": "node scripts/setup.mjs",
+    "dev": "node scripts/dev.mjs",
+    "db:up": "docker compose up -d --wait",
+    "db:down": "docker compose down",
+    "db:reset": "docker compose down -v && node scripts/setup.mjs"
+  }
+}

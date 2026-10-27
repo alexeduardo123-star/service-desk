@@ -41,6 +41,11 @@ lsof -i :5432
 
 ## Como rodar localmente
 
+> **Atalho:** na raiz do repositório, `npm run setup` faz os passos 1 e 2
+> sozinho usando o PostgreSQL do `docker-compose.yml` (precisa só do Docker
+> Desktop aberto). Ver o [README principal](../README.md). Os passos abaixo
+> são o caminho manual, com o PostgreSQL instalado na máquina.
+
 ### 1. Banco de dados (PostgreSQL)
 
 ```bash
