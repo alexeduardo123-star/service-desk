@@ -19,6 +19,14 @@ enum StatusTicket {
   FECHADO
 }
 
+enum TipoNotificacao {
+  TICKET_CRIADO
+  TICKET_ATRIBUIDO
+  TICKET_STATUS
+  TICKET_COMENTARIO
+  SISTEMA
+}
+
 model Usuario {
   id             Int          @id @default(autoincrement())
   nome           String
@@ -45,6 +53,7 @@ model Usuario {
   equipamentos       Equipamento[]
   artigos            BaseConhecimento[]
   configuracao       ConfiguracaoUsuario?
+  notificacoes       Notificacao[]
 
   @@map("usuarios")
 }
@@ -116,7 +125,8 @@ model Ticket {
   updatedAt     DateTime     @updatedAt
   closedAt      DateTime?
 
-  comentarios Comentario[]
+  comentarios  Comentario[]
+  notificacoes Notificacao[]
 
   @@map("tickets")
 }
@@ -161,4 +171,21 @@ model ConfiguracaoUsuario {
   updatedAt           DateTime @updatedAt
 
   @@map("configuracoes_usuario")
+}
+
+model Notificacao {
+  id        Int             @id @default(autoincrement())
+  usuarioId Int
+  usuario   Usuario         @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  tipo      TipoNotificacao @default(SISTEMA)
+  titulo    String
+  mensagem  String
+  ticketId  Int?
+  ticket    Ticket?         @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  lida      Boolean         @default(false)
+  lidaEm    DateTime?
+  createdAt DateTime        @default(now())
+
+  @@index([usuarioId, lida])
+  @@map("notificacoes")
 }

@@ -9,6 +9,7 @@
 
 CREATE TYPE "PapelUsuario" AS ENUM ('ADMIN', 'TECNICO', 'SOLICITANTE');
 CREATE TYPE "StatusTicket" AS ENUM ('ABERTO', 'EM_ANDAMENTO', 'FECHADO');
+CREATE TYPE "TipoNotificacao" AS ENUM ('TICKET_CRIADO', 'TICKET_ATRIBUIDO', 'TICKET_STATUS', 'TICKET_COMENTARIO', 'SISTEMA');
 
 CREATE TABLE "departamentos" (
     "id"        SERIAL PRIMARY KEY,
@@ -102,7 +103,20 @@ CREATE TABLE "configuracoes_usuario" (
     "updatedAt"            TIMESTAMP(3) NOT NULL
 );
 
+CREATE TABLE "notificacoes" (
+    "id"         SERIAL PRIMARY KEY,
+    "usuarioId"  INTEGER NOT NULL REFERENCES "usuarios" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+    "tipo"       "TipoNotificacao" NOT NULL DEFAULT 'SISTEMA',
+    "titulo"     TEXT NOT NULL,
+    "mensagem"   TEXT NOT NULL,
+    "ticketId"   INTEGER REFERENCES "tickets" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+    "lida"       BOOLEAN NOT NULL DEFAULT FALSE,
+    "lidaEm"     TIMESTAMP(3),
+    "createdAt"  TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE INDEX "idx_tickets_solicitante" ON "tickets" ("solicitanteId");
 CREATE INDEX "idx_tickets_tecnico" ON "tickets" ("tecnicoId");
 CREATE INDEX "idx_tickets_status" ON "tickets" ("status");
 CREATE INDEX "idx_comentarios_ticket" ON "comentarios" ("ticketId");
+CREATE INDEX "idx_notificacoes_usuario_lida" ON "notificacoes" ("usuarioId", "lida");

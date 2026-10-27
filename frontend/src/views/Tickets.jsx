@@ -4,11 +4,15 @@ import ticketService from "../services/ticketService";
 import TicketCard from "../components/TicketCard";
 import { StatusTicket } from "../enum/StatusTicket";
 import { STATUS_LABEL } from "../constants/labels";
+import Paginacao from "../components/Paginacao";
+import { paginar } from "../utils/paginar";
+import { lerPreferencias } from "../utils/preferencias";
 
 export default function Tickets() {
   const [tickets, setTickets] = useState([]);
   const [statusFiltro, setStatusFiltro] = useState("");
   const [carregando, setCarregando] = useState(true);
+  const [pagina, setPagina] = useState(1);
 
   useEffect(() => {
     // Agendada como microtask para não disparar setState de forma síncrona
@@ -19,6 +23,13 @@ export default function Tickets() {
       .then(setTickets)
       .finally(() => setCarregando(false));
   }, [statusFiltro]);
+
+  function mudarFiltro(status) {
+    setStatusFiltro(status);
+    setPagina(1);
+  }
+
+  const { itens, ...paginacao } = paginar(tickets, pagina, lerPreferencias().itensPorPagina);
 
   return (
     <div>
@@ -31,7 +42,7 @@ export default function Tickets() {
 
       <div className="mb-4 flex gap-2">
         <button
-          onClick={() => setStatusFiltro("")}
+          onClick={() => mudarFiltro("")}
           className={`rounded-full px-3 py-1 text-xs font-medium ${statusFiltro === "" ? "bg-gray-800 text-white" : "bg-gray-200 text-gray-700"}`}
         >
           Todos
@@ -39,7 +50,7 @@ export default function Tickets() {
         {Object.values(StatusTicket).map((status) => (
           <button
             key={status}
-            onClick={() => setStatusFiltro(status)}
+            onClick={() => mudarFiltro(status)}
             className={`rounded-full px-3 py-1 text-xs font-medium ${statusFiltro === status ? "bg-gray-800 text-white" : "bg-gray-200 text-gray-700"}`}
           >
             {STATUS_LABEL[status]}
@@ -51,12 +62,14 @@ export default function Tickets() {
         <p className="text-sm text-gray-500">Carregando…</p>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {tickets.map((ticket) => (
+          {itens.map((ticket) => (
             <TicketCard key={ticket.id} ticket={ticket} />
           ))}
           {tickets.length === 0 && <p className="text-sm text-gray-400">Nenhum chamado encontrado.</p>}
         </div>
       )}
+
+      {!carregando && <Paginacao {...paginacao} onChange={setPagina} />}
     </div>
   );
 }

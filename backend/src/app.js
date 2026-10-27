@@ -10,6 +10,7 @@ import equipamentosRoutes from "./routes/equipamentos.routes.js";
 import ticketsRoutes from "./routes/tickets.routes.js";
 import baseConhecimentoRoutes from "./routes/baseConhecimento.routes.js";
 import configuracoesRoutes from "./routes/configuracoes.routes.js";
+import notificacoesRoutes from "./routes/notificacoes.routes.js";
 import { errorHandler } from "./middlewares/errorHandler.js";
 
 const app = express();
@@ -37,6 +38,7 @@ app.use("/equipamentos", equipamentosRoutes);
 app.use("/tickets", ticketsRoutes);
 app.use("/base-conhecimento", baseConhecimentoRoutes);
 app.use("/configuracoes", configuracoesRoutes);
+app.use("/notificacoes", notificacoesRoutes);
 
 app.use(errorHandler);
 
