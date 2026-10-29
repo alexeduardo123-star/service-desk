@@ -17,6 +17,7 @@ import Prioridades from "../views/Prioridades";
 import Equipamentos from "../views/Equipamentos";
 import Configuracoes from "../views/Configuracoes";
 import Notificacoes from "../views/Notificacoes";
+import Kanban from "../views/Kanban";
 
 function RotaPrivada({ children, roles }) {
   const { logado, usuario } = useAuth();
@@ -41,6 +42,7 @@ export default function AppRoutes() {
       >
         <Route path="/home" element={<Home />} />
         <Route path="/tickets" element={<Tickets />} />
+        <Route path="/kanban" element={<Kanban />} />
         <Route path="/tickets/novo" element={<NovoTicket />} />
         <Route path="/tickets/:id" element={<TicketDetalhe />} />
         <Route path="/kb" element={<BaseConhecimento />} />

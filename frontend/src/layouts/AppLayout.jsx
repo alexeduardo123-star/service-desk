@@ -39,6 +39,7 @@ export default function AppLayout() {
         <nav className="flex flex-col gap-1">
           <NavLink to="/home" className={linkClasse}>Dashboard</NavLink>
           <NavLink to="/tickets" className={linkClasse}>Chamados</NavLink>
+          <NavLink to="/kanban" className={linkClasse}>Kanban</NavLink>
           <NavLink to="/kb" className={linkClasse}>Base de Conhecimento</NavLink>
           <NavLink to="/notificacoes" className={linkClasse}>Notificações</NavLink>
           {isTecnicoOuAdmin && (
