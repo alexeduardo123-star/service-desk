@@ -103,6 +103,105 @@ async function main() {
     });
   }
 
+  // Dados de demonstração para o dashboard e os relatórios terem o que mostrar:
+  // ~36 chamados espalhados pelos últimos 30 dias. Gerador pseudoaleatório com
+  // semente fixa para o resultado ser sempre o mesmo, e só roda se o banco
+  // ainda tem poucos chamados (não duplica em seeds seguintes).
+  if ((await prisma.ticket.count()) < 5) {
+    const tecnicoRedes = await prisma.usuario.upsert({
+      where: { email: "redes@servicedesk.com" },
+      update: {},
+      create: { nome: "Técnico Redes", email: "redes@servicedesk.com", senhaHash, papel: "TECNICO", departamentoId: departamentoTI.id },
+    });
+    const solicitanteRh = await prisma.usuario.upsert({
+      where: { email: "rh@servicedesk.com" },
+      update: {},
+      create: { nome: "Maria do RH", email: "rh@servicedesk.com", senhaHash, papel: "SOLICITANTE", departamentoId: departamentoFinanceiro.id },
+    });
+
+    const categorias = await prisma.categoria.findMany();
+    const prioridades = await prisma.prioridade.findMany();
+    const tecnicos = [tecnico, tecnicoRedes];
+    const solicitantes = [solicitante, solicitanteRh];
+
+    const TITULOS = {
+      Hardware: ["Monitor sem imagem", "Teclado com teclas travando", "Impressora não imprime", "Mouse não funciona", "Computador reiniciando sozinho"],
+      Software: ["Erro ao abrir o ERP", "Office pede ativação", "Antivírus bloqueando sistema", "Instalar leitor de PDF", "Sistema de ponto fora do ar"],
+      Rede: ["Sem acesso à internet", "Wi-Fi caindo toda hora", "VPN não conecta", "Pasta de rede inacessível", "Ponto de rede sem sinal"],
+    };
+
+    let semente = 42;
+    const aleatorio = () => {
+      semente = (semente * 1664525 + 1013904223) % 4294967296;
+      return semente / 4294967296;
+    };
+    const sortear = (lista) => lista[Math.floor(aleatorio() * lista.length)];
+
+    const HORA = 60 * 60 * 1000;
+    const agora = Date.now();
+
+    for (let i = 0; i < 36; i++) {
+      const categoria = sortear(categorias);
+      const prioridade = sortear(prioridades);
+      const diasAtras = Math.floor(aleatorio() * 30);
+      const criadoEm = new Date(agora - diasAtras * 24 * HORA - Math.floor(aleatorio() * 10 * HORA));
+
+      // Chamados antigos tendem a estar fechados; os recentes ficam abertos/em andamento.
+      const sorteio = aleatorio();
+      let status = "ABERTO";
+      if (diasAtras > 3) status = sorteio < 0.7 ? "FECHADO" : sorteio < 0.9 ? "EM_ANDAMENTO" : "ABERTO";
+      else status = sorteio < 0.25 ? "FECHADO" : sorteio < 0.65 ? "EM_ANDAMENTO" : "ABERTO";
+
+      let fechadoEm = null;
+      if (status === "FECHADO") {
+        // Tempo de resolução entre 30% e 160% do SLA: alguns estouram o prazo.
+        fechadoEm = new Date(criadoEm.getTime() + prioridade.slaHoras * HORA * (0.3 + aleatorio() * 1.3));
+        if (fechadoEm.getTime() > agora) {
+          status = "EM_ANDAMENTO";
+          fechadoEm = null;
+        }
+      }
+
+      const tecnicoDoChamado = status === "ABERTO" ? null : sortear(tecnicos);
+      const solicitanteDoChamado = sortear(solicitantes);
+      const titulo = sortear(TITULOS[categoria.nome] ?? TITULOS.Software);
+
+      const ticket = await prisma.ticket.create({
+        data: {
+          titulo,
+          descricao: `${titulo}. Chamado de demonstração gerado pelo seed.`,
+          status,
+          solicitanteId: solicitanteDoChamado.id,
+          tecnicoId: tecnicoDoChamado?.id ?? null,
+          categoriaId: categoria.id,
+          prioridadeId: prioridade.id,
+          createdAt: criadoEm,
+          closedAt: fechadoEm,
+        },
+      });
+
+      if (tecnicoDoChamado) {
+        await prisma.comentario.createMany({
+          data: [
+            { ticketId: ticket.id, usuarioId: tecnicoDoChamado.id, mensagem: "Chamado assumido, estou analisando.", createdAt: new Date(criadoEm.getTime() + HORA) },
+            { ticketId: ticket.id, usuarioId: solicitanteDoChamado.id, mensagem: "Obrigado, fico no aguardo.", createdAt: new Date(criadoEm.getTime() + 2 * HORA) },
+          ],
+        });
+      }
+    }
+  }
+
+  if ((await prisma.notificacao.count()) === 0) {
+    await prisma.notificacao.createMany({
+      data: [admin, tecnico, solicitante].map((u) => ({
+        usuarioId: u.id,
+        tipo: "SISTEMA",
+        titulo: "Bem-vindo ao Service Desk",
+        mensagem: "Aqui você acompanha avisos sobre os seus chamados. Ajuste o que quer receber em Configurações.",
+      })),
+    });
+  }
+
   // Ids foram fixados manualmente acima (upsert por id) para dados de
   // referência estáveis; realinha as sequences do Postgres para que os
   // próximos INSERTs (feitos pela API) não colidam com esses ids.
@@ -116,6 +215,7 @@ async function main() {
   console.log(`  ADMIN:       ${admin.email}`);
   console.log(`  TECNICO:     ${tecnico.email}`);
   console.log(`  SOLICITANTE: ${solicitante.email}`);
+  console.log(`  (demo)       redes@servicedesk.com e rh@servicedesk.com`);
 }
 
 main()
