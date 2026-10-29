@@ -3,6 +3,7 @@ import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/useAuth";
 import { PapelUsuario } from "../enum/PapelUsuario";
 import { PAPEL_LABEL } from "../constants/labels";
+import SinoNotificacoes from "../components/SinoNotificacoes";
 import configuracaoService from "../services/configuracaoService";
 import { salvarPreferencias } from "../utils/preferencias";
 
@@ -39,6 +40,7 @@ export default function AppLayout() {
           <NavLink to="/home" className={linkClasse}>Dashboard</NavLink>
           <NavLink to="/tickets" className={linkClasse}>Chamados</NavLink>
           <NavLink to="/kb" className={linkClasse}>Base de Conhecimento</NavLink>
+          <NavLink to="/notificacoes" className={linkClasse}>Notificações</NavLink>
           {isTecnicoOuAdmin && (
             <NavLink to="/admin/equipamentos" className={linkClasse}>Equipamentos</NavLink>
           )}
@@ -60,6 +62,7 @@ export default function AppLayout() {
             {usuario?.nome} <span className="text-gray-400">— {PAPEL_LABEL[usuario?.papel]}</span>
           </div>
           <div className="flex items-center gap-4">
+            <SinoNotificacoes />
             <NavLink to="/configuracoes" className="text-sm font-medium text-gray-600 hover:text-blue-600">
               Configurações
             </NavLink>
