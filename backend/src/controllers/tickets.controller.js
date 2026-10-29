@@ -1,5 +1,6 @@
 import prisma from "../config/prisma.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
+import { montarFiltroTickets } from "../utils/filtrosTicket.js";
 import { avisarTicketCriado, avisarTicketAtribuido, avisarStatusAlterado } from "../utils/eventosTicket.js";
 
 const include = {
@@ -15,12 +16,7 @@ function podeVer(ticket, user) {
 }
 
 export const listar = asyncHandler(async (req, res) => {
-  const { status, categoriaId } = req.query;
-  const where = {};
-  if (req.user.papel === "SOLICITANTE") where.solicitanteId = req.user.id;
-  if (status) where.status = status;
-  if (categoriaId) where.categoriaId = Number(categoriaId);
-
+  const where = montarFiltroTickets(req.query, req.user);
   const tickets = await prisma.ticket.findMany({ where, include, orderBy: { createdAt: "desc" } });
   res.json(tickets);
 });
@@ -68,8 +64,9 @@ export const atualizar = asyncHandler(async (req, res) => {
 
 export const alterarStatus = asyncHandler(async (req, res) => {
   const { status } = req.body;
-  const data = { status };
-  if (status === "FECHADO") data.closedAt = new Date();
+  // Ao fechar registra a data; ao reabrir (arrastar de volta no kanban, por
+  // exemplo) limpa, senão o chamado ficaria "aberto" com data de fechamento.
+  const data = { status, closedAt: status === "FECHADO" ? new Date() : null };
 
   const ticket = await prisma.ticket.update({
     where: { id: Number(req.params.id) },
