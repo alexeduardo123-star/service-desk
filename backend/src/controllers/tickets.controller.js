@@ -1,5 +1,6 @@
 import prisma from "../config/prisma.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
+import { avisarTicketCriado, avisarTicketAtribuido, avisarStatusAlterado } from "../utils/eventosTicket.js";
 
 const include = {
   solicitante: { select: { id: true, nome: true } },
@@ -47,6 +48,7 @@ export const criar = asyncHandler(async (req, res) => {
     },
     include,
   });
+  avisarTicketCriado(ticket, req.user);
   res.status(201).json(ticket);
 });
 
@@ -74,6 +76,7 @@ export const alterarStatus = asyncHandler(async (req, res) => {
     data,
     include,
   });
+  avisarStatusAlterado(ticket, req.user);
   res.json(ticket);
 });
 
@@ -84,6 +87,7 @@ export const atribuir = asyncHandler(async (req, res) => {
     data: { tecnicoId, status: "EM_ANDAMENTO" },
     include,
   });
+  avisarTicketAtribuido(ticket, req.user);
   res.json(ticket);
 });
 

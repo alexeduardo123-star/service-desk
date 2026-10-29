@@ -1,5 +1,6 @@
 import prisma from "../config/prisma.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
+import { avisarComentario } from "../utils/eventosTicket.js";
 
 async function carregarTicket(ticketId) {
   return prisma.ticket.findUnique({ where: { id: Number(ticketId) } });
@@ -31,6 +32,7 @@ export const criar = asyncHandler(async (req, res) => {
     data: { ticketId: ticket.id, usuarioId: req.user.id, mensagem: req.body.mensagem },
     include: { usuario: { select: { id: true, nome: true } } },
   });
+  avisarComentario(ticket, req.user);
   res.status(201).json(comentario);
 });
 
