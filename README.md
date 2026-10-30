@@ -16,6 +16,22 @@ Cada pasta tem seu próprio `package.json`, `node_modules` e README.
 | `backend/` | API, autenticação JWT, modelagem do banco, CORS, produção | [backend/README.md](backend/README.md) |
 | `frontend/` | Telas, rotas protegidas, consumo da API via axios | [frontend/README.md](frontend/README.md) |
 
+## Funcionalidades
+
+| Tela | Quem acessa | O que faz |
+|------|-------------|-----------|
+| Dashboard | todos | indicadores, gráficos (status, prioridade, categoria, chamados por dia) e SLA; o solicitante vê só os próprios dados |
+| Chamados | todos | lista com filtro por status e paginação; abertura e detalhe com comentários |
+| Kanban | todos | quadro por status com arrastar e soltar, busca e filtros por prioridade, categoria e técnico |
+| Notificações | todos | central de notificações (lidas/não lidas), sino com contador no topo; admin envia comunicados |
+| Configurações | todos | perfil (nome, telefone, cargo), troca de senha e preferências (fuso, itens por página, avisos) |
+| Relatórios | admin e técnico | relatório de chamados por período e filtros, exportação em CSV, impressão e filtros salvos (CRUD) |
+| Administração | admin | usuários, departamentos, categorias, prioridades e equipamentos |
+
+As notificações são criadas automaticamente quando um chamado é aberto,
+atribuído, muda de status ou recebe comentário, respeitando as preferências
+de cada usuário.
+
 ## Subindo o projeto (jeito rápido)
 
 Pré-requisitos: [Node.js 22 LTS](https://nodejs.org) e
@@ -64,3 +80,19 @@ npm run dev                 # http://localhost:5173
 
 Usuários de teste (senha `123456`): `admin@servicedesk.com`,
 `tecnico@servicedesk.com`, `usuario@servicedesk.com`.
+
+## Atualizando um clone que já estava rodando
+
+Depois de puxar as novidades (`git pull`), aplique as migrations e atualize
+os dados de teste:
+
+```bash
+cd backend
+npm install
+npx prisma migrate dev      # cria as tabelas novas (configurações, notificações, relatórios salvos)
+node prisma/seed.js         # opcional: recria os dados de teste (inclui chamados de exemplo para os gráficos)
+cd ../frontend
+npm install
+npm run build               # opcional: atualiza o dist/ versionado
+```
+

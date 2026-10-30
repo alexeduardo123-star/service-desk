@@ -214,6 +214,37 @@ GET|POST|PUT|DELETE  /tickets/:id/comentarios
 GET|POST|PUT|DELETE  /base-conhecimento
 ```
 
+## Endpoints de configurações, notificações, dashboard e relatórios
+
+Todos exigem o token JWT (`Authorization: Bearer <token>`).
+
+| Método e rota | Quem | O que faz |
+|---------------|------|-----------|
+| `GET` / `PUT /configuracoes/me` | logado | lê / salva as preferências do próprio usuário (fuso, itens por página, avisos) |
+| `PUT /usuarios/me` | logado | atualiza o próprio perfil (nome, telefone, cargo) |
+| `PUT /usuarios/me/senha` | logado | troca a própria senha (exige a senha atual) |
+| `GET /notificacoes` | logado | lista as notificações do usuário (`?lida=true\|false` filtra) |
+| `GET /notificacoes/nao-lidas/contagem` | logado | contador usado pelo sino |
+| `PATCH /notificacoes/:id/lida` | logado | marca como lida / não lida |
+| `PATCH /notificacoes/ler-todas` | logado | marca todas como lidas |
+| `DELETE /notificacoes/:id` \| `/notificacoes/lidas` | logado | exclui uma / todas as já lidas |
+| `POST /notificacoes` | admin | envia um comunicado |
+| `GET /dashboard?dias=14` | logado | indicadores e séries dos gráficos (solicitante vê só os próprios chamados) |
+| `GET /tickets` | logado | aceita `status`, `categoriaId`, `prioridadeId`, `tecnicoId` (`me`, `none` ou id), `q`, `de` e `ate` |
+| `GET /relatorios/chamados` | admin, técnico | relatório de chamados com resumo e linhas (mesmos filtros de `/tickets`; limite de 5000 linhas) |
+| `GET` \| `POST /relatorios/salvos` | admin, técnico | lista / cria filtros salvos de relatório |
+| `GET` \| `PUT` \| `DELETE /relatorios/salvos/:id` | admin, técnico | cada usuário só acessa os próprios relatórios salvos |
+
+**Notificações automáticas.** O backend cria as notificações sozinho nos
+eventos do chamado: abertura (avisa admins e técnicos), atribuição (avisa o
+técnico), mudança de status e novo comentário (avisam o solicitante e o
+técnico, nunca quem fez a ação). Antes de gravar, `utils/notificar.js`
+consulta as preferências do destinatário e descarta o que ele desligou.
+
+**Migrations.** As tabelas novas (`configuracoes_usuario`, `notificacoes`,
+`relatorios_salvos`) existem nas migrations do Prisma, nas do Sequelize
+(`migrations/*.cjs`) e em `sql/schema.sql`, mantidas iguais.
+
 ## Produção (documentação — não implementado neste repositório)
 
 **PM2** mantém o processo Node vivo, reiniciando em caso de crash:

@@ -34,7 +34,7 @@ export default function AppLayout() {
 
   return (
     <div className="flex min-h-screen">
-      <aside className="w-56 shrink-0 border-r border-gray-200 bg-white p-4">
+      <aside className="w-56 shrink-0 border-r border-gray-200 bg-white p-4 print:hidden">
         <h2 className="mb-6 text-lg font-bold text-blue-600">Service Desk</h2>
         <nav className="flex flex-col gap-1">
           <NavLink to="/home" className={linkClasse}>Dashboard</NavLink>
@@ -43,7 +43,10 @@ export default function AppLayout() {
           <NavLink to="/kb" className={linkClasse}>Base de Conhecimento</NavLink>
           <NavLink to="/notificacoes" className={linkClasse}>Notificações</NavLink>
           {isTecnicoOuAdmin && (
-            <NavLink to="/admin/equipamentos" className={linkClasse}>Equipamentos</NavLink>
+            <>
+              <NavLink to="/relatorios" className={linkClasse}>Relatórios</NavLink>
+              <NavLink to="/admin/equipamentos" className={linkClasse}>Equipamentos</NavLink>
+            </>
           )}
           {isAdmin && (
             <>
@@ -58,7 +61,7 @@ export default function AppLayout() {
       </aside>
 
       <div className="flex flex-1 flex-col">
-        <header className="flex items-center justify-between border-b border-gray-200 bg-white px-6 py-3">
+        <header className="flex items-center justify-between border-b border-gray-200 bg-white px-6 py-3 print:hidden">
           <div className="text-sm text-gray-600">
             {usuario?.nome} <span className="text-gray-400">— {PAPEL_LABEL[usuario?.papel]}</span>
           </div>
@@ -77,7 +80,7 @@ export default function AppLayout() {
           <Outlet />
         </main>
 
-        <footer className="border-t border-gray-200 px-6 py-3 text-center text-xs text-gray-400">
+        <footer className="border-t border-gray-200 px-6 py-3 text-center text-xs text-gray-400 print:hidden">
           Service Desk — Projeto acadêmico
         </footer>
       </div>

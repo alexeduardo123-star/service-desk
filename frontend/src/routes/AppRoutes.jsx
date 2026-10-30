@@ -18,6 +18,7 @@ import Equipamentos from "../views/Equipamentos";
 import Configuracoes from "../views/Configuracoes";
 import Notificacoes from "../views/Notificacoes";
 import Kanban from "../views/Kanban";
+import Relatorios from "../views/Relatorios";
 
 function RotaPrivada({ children, roles }) {
   const { logado, usuario } = useAuth();
@@ -49,6 +50,14 @@ export default function AppRoutes() {
         <Route path="/configuracoes" element={<Configuracoes />} />
         <Route path="/notificacoes" element={<Notificacoes />} />
 
+        <Route
+          path="/relatorios"
+          element={
+            <RotaPrivada roles={["ADMIN", "TECNICO"]}>
+              <Relatorios />
+            </RotaPrivada>
+          }
+        />
         <Route
           path="/admin/equipamentos"
           element={
