@@ -54,6 +54,7 @@ model Usuario {
   artigos            BaseConhecimento[]
   configuracao       ConfiguracaoUsuario?
   notificacoes       Notificacao[]
+  relatoriosSalvos   RelatorioSalvo[]
 
   @@map("usuarios")
 }
@@ -188,4 +189,18 @@ model Notificacao {
 
   @@index([usuarioId, lida])
   @@map("notificacoes")
+}
+
+model RelatorioSalvo {
+  id        Int      @id @default(autoincrement())
+  nome      String
+  descricao String?
+  filtros   Json
+  usuarioId Int
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([usuarioId])
+  @@map("relatorios_salvos")
 }

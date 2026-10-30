@@ -115,8 +115,19 @@ CREATE TABLE "notificacoes" (
     "createdAt"  TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE "relatorios_salvos" (
+    "id"         SERIAL PRIMARY KEY,
+    "nome"       TEXT NOT NULL,
+    "descricao"  TEXT,
+    "filtros"    JSONB NOT NULL,
+    "usuarioId"  INTEGER NOT NULL REFERENCES "usuarios" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+    "createdAt"  TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt"  TIMESTAMP(3) NOT NULL
+);
+
 CREATE INDEX "idx_tickets_solicitante" ON "tickets" ("solicitanteId");
 CREATE INDEX "idx_tickets_tecnico" ON "tickets" ("tecnicoId");
 CREATE INDEX "idx_tickets_status" ON "tickets" ("status");
 CREATE INDEX "idx_comentarios_ticket" ON "comentarios" ("ticketId");
 CREATE INDEX "idx_notificacoes_usuario_lida" ON "notificacoes" ("usuarioId", "lida");
+CREATE INDEX "idx_relatorios_salvos_usuario" ON "relatorios_salvos" ("usuarioId");
