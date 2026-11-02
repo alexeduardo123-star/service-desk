@@ -103,6 +103,7 @@ model Equipamento {
   departamento   Departamento? @relation(fields: [departamentoId], references: [id])
 
   tickets Ticket[]
+  contratos ContratoManutencao[]
 
   @@map("equipamentos")
 }
@@ -203,4 +204,41 @@ model RelatorioSalvo {
 
   @@index([usuarioId])
   @@map("relatorios_salvos")
+}
+
+
+model Fornecedor {
+  id        Int      @id @default(autoincrement())
+  nome      String
+  cnpj      String   @unique
+  contato   String?
+  telefone  String?
+  email     String?
+  ativo     Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  contratos ContratoManutencao[]
+
+  @@map("fornecedores")
+}
+
+model ContratoManutencao {
+  id            Int        @id @default(autoincrement())
+  titulo        String
+  fornecedorId  Int
+  fornecedor    Fornecedor @relation(fields: [fornecedorId], references: [id], onDelete: Restrict)
+  equipamentoId Int
+  equipamento   Equipamento @relation(fields: [equipamentoId], references: [id], onDelete: Restrict)
+  inicio        DateTime
+  fim           DateTime
+  valor         Decimal    @db.Decimal(12, 2)
+  status        String     @default("ATIVO")
+  observacoes   String?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  @@index([fornecedorId])
+  @@index([equipamentoId])
+  @@map("contratos_manutencao")
 }
