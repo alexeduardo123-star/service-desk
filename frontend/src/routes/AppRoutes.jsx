@@ -15,6 +15,7 @@ import Departamentos from "../views/Departamentos";
 import Categorias from "../views/Categorias";
 import Prioridades from "../views/Prioridades";
 import Equipamentos from "../views/Equipamentos";
+import Contratos from "../views/Contratos";
 import Configuracoes from "../views/Configuracoes";
 import Notificacoes from "../views/Notificacoes";
 import Kanban from "../views/Kanban";

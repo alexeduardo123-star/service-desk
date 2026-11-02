@@ -46,6 +46,7 @@ export default function AppLayout() {
             <>
               <NavLink to="/relatorios" className={linkClasse}>Relatórios</NavLink>
               <NavLink to="/admin/equipamentos" className={linkClasse}>Equipamentos</NavLink>
+              <NavLink to="/admin/contratos" className={linkClasse}>Contratos</NavLink>
             </>
           )}
           {isAdmin && (

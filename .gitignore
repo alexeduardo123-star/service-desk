@@ -13,3 +13,5 @@ node_modules
 *.sw?
 .claude/settings.local.json
 .env
+
+dist/
