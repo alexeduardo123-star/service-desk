@@ -281,3 +281,16 @@ Node não precisa lidar com certificados), serve o front estático com
 cache/gzip mais eficiente que o Express, expõe só as portas 80/443 ao
 público — escondendo a topologia interna — e permite trocar/escalar a API
 por trás do mesmo domínio sem o cliente perceber.
+
+## Fornecedores e contratos de manutenção
+
+O módulo de fornecedores está disponível em `/fornecedores` e é restrito ao perfil `ADMIN`. O CRUD de contratos de manutenção fica em `/contratos`, disponível para `ADMIN` e `TECNICO` (exclusão somente `ADMIN`). Os contratos relacionam um fornecedor a um equipamento e registram período de vigência, valor e situação.
+
+Após atualizar o código, aplique as migrations do Prisma e gere o client:
+
+```bash
+npx prisma migrate deploy
+npx prisma generate
+```
+
+Para ambiente local de desenvolvimento com migration nova, use `npx prisma migrate dev` no lugar de `migrate deploy`.

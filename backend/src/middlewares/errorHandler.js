@@ -4,6 +4,9 @@ export function errorHandler(err, req, res, _next) {
   if (err.code === "P2002") {
     return res.status(409).json({ erro: "Registro duplicado (campo único já existe)" });
   }
+  if (err.code === "P2003") {
+    return res.status(409).json({ erro: "Não é possível excluir: há registros vinculados" });
+  }
   if (err.code === "P2025") {
     return res.status(404).json({ erro: "Registro não encontrado" });
   }
