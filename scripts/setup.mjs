@@ -4,6 +4,7 @@
 // problema (não duplica nada).
 import { execSync } from "node:child_process";
 import { copyFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -80,6 +81,34 @@ if (existsSync(envPath) && !porta) {
 
 passo("Instalando dependências do backend");
 rodar("npm install", backend);
+
+// No Windows o Docker consegue publicar a porta mesmo com outro PostgreSQL
+// (instalado na máquina) já escutando nela, e quem responde em localhost é o
+// outro. Testa a conexão de verdade com as credenciais do .env.
+passo("Testando a conexão com o banco");
+const requireBackend = createRequire(join(backend, "package.json"));
+const { Client } = requireBackend("pg");
+const { DATABASE_URL } = requireBackend("dotenv").parse(readFileSync(envPath));
+const cliente = new Client({ connectionString: DATABASE_URL });
+try {
+  await cliente.connect();
+  await cliente.query("SELECT 1");
+  console.log("Conexão OK.");
+} catch (err) {
+  const portaUrl = DATABASE_URL.match(/@[^:/]+:(\d+)\//)?.[1] || "5432";
+  falhar(
+    `Não foi possível entrar no banco (${err.code || ""} ${err.message}).\n\n` +
+      `Causas mais comuns:\n` +
+      `  1. Existe outro PostgreSQL instalado no computador usando a porta ${portaUrl} e ele responde no lugar ` +
+      `do banco do Docker. Pare esse serviço (Windows: services.msc > postgresql > Parar) ou use outra porta:\n` +
+      `       PowerShell:  $env:DB_PORT=5433; npm run setup\n` +
+      `       Git Bash:    DB_PORT=5433 npm run setup\n` +
+      `  2. O backend/.env é antigo e está com usuário/senha diferentes. Apague o backend/.env e rode ` +
+      `npm run setup de novo.`
+  );
+} finally {
+  await cliente.end().catch(() => {});
+}
 
 passo("Instalando dependências do frontend");
 rodar("npm install", frontend);
