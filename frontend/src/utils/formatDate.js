@@ -18,3 +18,16 @@ export function formatDate(isoString) {
     return data.toLocaleString("pt-BR", OPCOES);
   }
 }
+
+export function formatDateOnly(isoString) {
+  if (!isoString) return "-";
+
+  const data = String(isoString).slice(0, 10);
+  const partes = /^(\d{4})-(\d{2})-(\d{2})$/.exec(data);
+
+  if (!partes) return "-";
+
+  const [, ano, mes, dia] = partes;
+
+  return `${dia}/${mes}/${ano}`;
+}

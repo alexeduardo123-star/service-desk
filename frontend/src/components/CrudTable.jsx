@@ -46,7 +46,15 @@ export default function CrudTable({
     setEditandoId(registro.id);
     setForm(
       Object.fromEntries(
-        campos.map((campo) => [campo.name, registro[campo.name] ?? ""])
+        campos.map((campo) => {
+          let valor = registro[campo.name] ?? "";
+
+          if (campo.type === "date" && valor) {
+            valor = String(valor).slice(0, 10);
+          }
+
+          return [campo.name, valor];
+        })
       )
     );
   }

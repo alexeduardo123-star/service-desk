@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatDate } from "./formatDate";
+import { formatDate, formatDateOnly } from "./formatDate";
 
 describe("formatDate", () => {
   it("retorna '-' quando não recebe data", () => {
@@ -27,5 +27,23 @@ describe("formatDate com fuso horário das preferências", () => {
     localStorage.setItem("preferencias", JSON.stringify({ fusoHorario: "Marte/Olimpo" }));
     expect(formatDate("2026-03-05T14:30:00Z")).toMatch(/^\d{2}\/\d{2}\/\d{4}/);
     localStorage.clear();
+  });
+});
+
+describe("formatDateOnly", () => {
+  it("formata uma data ISO sem alterar o dia", () => {
+    expect(formatDateOnly("2026-11-09T00:00:00.000Z"))
+      .toBe("09/11/2026");
+  });
+
+  it("formata uma data sem horário", () => {
+    expect(formatDateOnly("2027-11-09"))
+      .toBe("09/11/2027");
+  });
+
+  it("retorna '-' quando não recebe uma data válida", () => {
+    expect(formatDateOnly(null)).toBe("-");
+    expect(formatDateOnly("")).toBe("-");
+    expect(formatDateOnly("data inválida")).toBe("-");
   });
 });

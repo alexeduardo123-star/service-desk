@@ -68,6 +68,14 @@ export default function AppRoutes() {
           }
         />
         <Route
+          path="/admin/contratos"
+          element={
+            <RotaPrivada roles={["ADMIN", "TECNICO"]}>
+              <Contratos />
+            </RotaPrivada>
+          }
+        />
+        <Route
           path="/admin/usuarios"
           element={
             <RotaPrivada roles={["ADMIN"]}>

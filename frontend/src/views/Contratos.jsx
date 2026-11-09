@@ -5,6 +5,7 @@ import fornecedorService from "../services/fornecedorService";
 import equipamentoService from "../services/equipamentoService";
 import { useAuth } from "../auth/useAuth";
 import { PapelUsuario } from "../enum/PapelUsuario";
+import { formatDateOnly } from "../utils/formatDate";
 
 export default function Contratos() {
   const [fornecedores, setFornecedores] = useState([]);
@@ -121,14 +122,12 @@ export default function Contratos() {
     {
       key: "inicio",
       label: "Início",
-      render: (item) =>
-        item.inicio ? new Date(item.inicio).toLocaleDateString("pt-BR") : "-",
+      render: (item) => formatDateOnly(item.inicio),
     },
     {
       key: "fim",
       label: "Fim",
-      render: (item) =>
-        item.fim ? new Date(item.fim).toLocaleDateString("pt-BR") : "-",
+      render: (item) => formatDateOnly(item.fim),
     },
     { key: "status", label: "Situação" },
   ];
