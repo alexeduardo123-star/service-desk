@@ -1,8 +1,10 @@
-// Gera um histórico realista de usuários e chamados para a apresentação.
+// Gera um histórico realista para a apresentação: usuários, equipamentos,
+// chamados (com comentários e notificações), fornecedores e contratos.
 //
 //   npm run seed:apresentacao
 //
-// Só ADICIONA dados (não apaga nada) e se recusa a rodar duas vezes, para não
+// Só ADICIONA dados (não apaga nada). Cada parte tem a sua trava: se já foi
+// gerada naquele banco, é pulada, então o script pode rodar de novo sem
 // duplicar. Usa um gerador pseudoaleatório com semente fixa: o resultado é
 // sempre o mesmo. Senha de todos os usuários criados: 123456.
 import "dotenv/config";
@@ -164,9 +166,9 @@ async function buscarOuCriar(model, where, data) {
   return (await prisma[model].findFirst({ where })) ?? prisma[model].create({ data });
 }
 
-async function main() {
+async function gerarUsuariosEChamados() {
   if (await prisma.usuario.findUnique({ where: { email: MARCADOR_EMAIL } })) {
-    console.log("O histórico da apresentação já foi gerado neste banco. Nada a fazer.");
+    console.log("Usuários e chamados da apresentação já existem neste banco. Pulando essa parte.");
     return;
   }
 
@@ -365,6 +367,111 @@ async function main() {
   console.log(`  ${chamadosCriados.length} chamados nos últimos 90 dias:`, porStatus);
   console.log(`  ${totalComentarios} comentários, ${notificacoes.length} notificações`);
   console.log("  Logins sugeridos: patricia.mendes@servicedesk.com (admin), rafael.lima@servicedesk.com (técnico), ana.souza@servicedesk.com (solicitante)");
+}
+
+// CNPJ fictício, mas com dígitos verificadores válidos (a API valida).
+function cnpjComDigitos(base12) {
+  const digito = (base, pesos) => {
+    const resto = [...base].reduce((t, d, i) => t + Number(d) * pesos[i], 0) % 11;
+    return resto < 2 ? 0 : 11 - resto;
+  };
+  const d1 = digito(base12, [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+  const d2 = digito(base12 + d1, [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+  return `${base12}${d1}${d2}`;
+}
+
+// Empresas fictícias. [nome, base do CNPJ, contato, telefone, email, ativo]
+const FORNECEDORES = [
+  ["TecnoServ Manutenção de Equipamentos Ltda", "482917350001", "Marcos Vieira", "(47) 3322-4510", "suporte@tecnoserv.com.br", true],
+  ["PrintMax Soluções em Impressão Ltda", "315608920001", "Simone Arruda", "(47) 3045-7788", "contratos@printmax.com.br", true],
+  ["InfoParts Comércio de Informática Ltda", "276540180001", "Diego Fontana", "(47) 3211-9034", "vendas@infoparts.com.br", true],
+  ["RedeSul Telecom e Infraestrutura S.A.", "593281470001", "Aline Prado", "(47) 3090-1200", "empresas@redesul.net.br", true],
+  ["DataCare Assistência Técnica ME", "184736290001", "Jonas Kruger", "(47) 99812-4477", "datacare.atendimento@gmail.com", false],
+];
+
+async function gerarFornecedoresEContratos() {
+  const cnpjMarcador = cnpjComDigitos(FORNECEDORES[0][1]);
+  if (await prisma.fornecedor.findUnique({ where: { cnpj: cnpjMarcador } })) {
+    console.log("Fornecedores e contratos da apresentação já existem neste banco. Pulando essa parte.");
+    return;
+  }
+
+  const forn = {};
+  for (const [nome, base, contato, telefone, email, ativo] of FORNECEDORES) {
+    forn[nome.split(" ")[0]] = await prisma.fornecedor.create({
+      data: { nome, cnpj: cnpjComDigitos(base), contato, telefone, email, ativo, createdAt: horarioComercial(Math.floor(entre(150, 400))) },
+    });
+  }
+
+  const equipamentos = await prisma.equipamento.findMany({ where: { numeroSerie: { startsWith: "APR-" } }, orderBy: { numeroSerie: "asc" } });
+  const impressoras = equipamentos.filter((e) => e.tipo === "Impressora");
+  // O computador sem dono (era do ex-funcionário) vem primeiro: vira o contrato suspenso.
+  const computadores = equipamentos
+    .filter((e) => e.tipo !== "Impressora")
+    .sort((a, b) => (a.usuarioId === null ? -1 : 0) - (b.usuarioId === null ? -1 : 0));
+  if (!equipamentos.length) {
+    console.log("Nenhum equipamento da apresentação encontrado; contratos não foram criados.");
+    return;
+  }
+
+  // Datas relativas a hoje: alguns contratos vencem em breve, outros já acabaram.
+  const dia = (deslocamento) => {
+    const d = new Date(AGORA + deslocamento * DIA);
+    d.setUTCHours(12, 0, 0, 0);
+    return d;
+  };
+  const contratos = [];
+  impressoras.forEach((imp, i) => {
+    const vencendo = i === 0;
+    contratos.push({
+      titulo: `Outsourcing de impressão - ${imp.numeroSerie.replace("APR-IMP-", "Setor ")}`,
+      fornecedorId: forn.PrintMax.id, equipamentoId: imp.id,
+      inicio: dia(vencendo ? -345 : -200), fim: dia(vencendo ? 20 : 165),
+      valor: 389.9 * 12, status: "ATIVO",
+      observacoes: vencendo
+        ? "Vence em breve: avaliar renovação com reajuste de 4,5% proposto pelo fornecedor."
+        : "Inclui toner, peças e visita técnica em até 8h úteis. Franquia de 3.000 páginas/mês.",
+    });
+  });
+  // Contrato antigo de impressão, encerrado ao trocar de fornecedor.
+  if (impressoras[0]) {
+    contratos.push({
+      titulo: "Manutenção de impressoras (contrato anterior)", fornecedorId: forn.DataCare.id, equipamentoId: impressoras[0].id,
+      inicio: dia(-710), fim: dia(-346), valor: 2900, status: "ENCERRADO",
+      observacoes: "Não renovado: atendimento lento e sem reposição de peças. Substituído pelo contrato com a PrintMax.",
+    });
+  }
+  computadores.slice(0, 8).forEach((pc, i) => {
+    const suspenso = pc.usuarioId === null;
+    contratos.push({
+      titulo: `Garantia estendida e manutenção - ${pc.nome} (${pc.numeroSerie})`,
+      fornecedorId: (i % 3 === 2 ? forn.InfoParts : forn.TecnoServ).id, equipamentoId: pc.id,
+      inicio: dia(-Math.floor(entre(60, 300))), fim: dia(Math.floor(entre(90, 700))),
+      valor: Math.round(entre(450, 1300)) + 0.9, status: suspenso ? "SUSPENSO" : "ATIVO",
+      observacoes: suspenso
+        ? "Suspenso: equipamento recolhido após o desligamento do colaborador, aguardando realocação."
+        : "Cobertura on-site, troca de peças inclusa. SLA de 2 dias úteis.",
+    });
+  });
+  for (const [i, pc] of computadores.slice(8, 11).entries()) {
+    contratos.push({
+      titulo: `Garantia de fábrica - ${pc.numeroSerie}`, fornecedorId: forn.InfoParts.id, equipamentoId: pc.id,
+      inicio: dia(-400 - i * 30), fim: dia(-35 - i * 20), valor: 299.9, status: "ENCERRADO",
+      observacoes: "Garantia de 12 meses encerrada. Avaliar contratação de garantia estendida.",
+    });
+  }
+
+  await prisma.contratoManutencao.createMany({ data: contratos });
+
+  const porStatus = contratos.reduce((acc, c) => ({ ...acc, [c.status]: (acc[c.status] ?? 0) + 1 }), {});
+  const valorAtivo = contratos.filter((c) => c.status === "ATIVO").reduce((t, c) => t + c.valor, 0);
+  console.log(`  ${FORNECEDORES.length} fornecedores, ${contratos.length} contratos:`, porStatus);
+  console.log(`  Valor anual em contratos ativos: R$ ${valorAtivo.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`);
+}
+
+async function main() {
+  await gerarUsuariosEChamados();
+  await gerarFornecedoresEContratos();
 }
 
 main()
