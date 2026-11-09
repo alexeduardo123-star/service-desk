@@ -8,6 +8,7 @@
     "dev": "nodemon server.js",
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "node prisma/seed.js",
+    "seed:apresentacao": "node prisma/seed-apresentacao.js",
     "sequelize:migrate": "sequelize-cli db:migrate",
     "sequelize:migrate:undo": "sequelize-cli db:migrate:undo:all",
     "sequelize:demo:migrate": "cross-env DATABASE_URL=postgresql://servicedesk_user:servicedesk_pw@localhost:5432/servicedesk_sequelize sequelize-cli db:migrate",
