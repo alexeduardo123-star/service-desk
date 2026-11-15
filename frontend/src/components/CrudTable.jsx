@@ -1,9 +1,12 @@
 import { useEffect, useState } from "react";
 import Botao from "./Botao";
 import InputField from "./InputField";
+import Toggle from "./Toggle";
 import { useNotification } from "../store/useNotification";
 
-const vazio = (campos) => Object.fromEntries(campos.map((campo) => [campo.name, ""]));
+const valorInicial = (campo) => campo.default ?? (campo.type === "checkbox" ? false : "");
+
+const vazio = (campos) => Object.fromEntries(campos.map((campo) => [campo.name, valorInicial(campo)]));
 
 export default function CrudTable({
   titulo,
@@ -47,6 +50,10 @@ export default function CrudTable({
     setForm(
       Object.fromEntries(
         campos.map((campo) => {
+          if (campo.type === "checkbox") {
+            return [campo.name, Boolean(registro[campo.name])];
+          }
+
           let valor = registro[campo.name] ?? "";
 
           if (campo.type === "date" && valor) {
@@ -126,7 +133,19 @@ export default function CrudTable({
         >
           {campos.map((campo) => (
             <div key={campo.name}>
-              {campo.type === "select" ? (
+              {campo.type === "checkbox" ? (
+                <Toggle
+                  label={campo.label}
+                  descricao={campo.descricao}
+                  checked={Boolean(form[campo.name])}
+                  onChange={(valor) =>
+                    setForm({
+                      ...form,
+                      [campo.name]: valor,
+                    })
+                  }
+                />
+              ) : campo.type === "select" ? (
                 <label className="flex flex-col gap-1 text-sm text-gray-700">
                   <span className="font-medium">{campo.label}</span>
                   <select
@@ -140,7 +159,7 @@ export default function CrudTable({
                       })
                     }
                   >
-                    <option value="">Selecione…</option>
+                    <option value="">{campo.placeholder ?? "Selecione…"}</option>
                     {campo.options.map((opcao) => (
                       <option key={opcao.value} value={opcao.value}>
                         {opcao.label}

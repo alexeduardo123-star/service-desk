@@ -95,4 +95,36 @@ describe("CrudTable", () => {
       });
     });
   });
+
+  it("usa o padrão e envia booleano em campos do tipo checkbox", async () => {
+    const service = {
+      listar: vi.fn().mockResolvedValue([]),
+      criar: vi.fn().mockResolvedValue({}),
+    };
+
+    render(
+      <CrudTable
+        titulo="Serviços"
+        campos={[
+          { name: "nome", label: "Nome", required: true },
+          { name: "ativo", label: "Ativo", type: "checkbox", default: true },
+        ]}
+        colunas={[{ key: "nome", label: "Nome" }]}
+        service={service}
+      />
+    );
+
+    await screen.findByText("Nenhum registro encontrado.");
+    fireEvent.click(screen.getByRole("button", { name: "Novo" }));
+
+    expect(screen.getByRole("switch")).toBeChecked();
+
+    fireEvent.change(screen.getByLabelText("Nome"), { target: { value: "Suporte" } });
+    fireEvent.click(screen.getByRole("switch"));
+    fireEvent.click(screen.getByRole("button", { name: "Criar" }));
+
+    await waitFor(() => {
+      expect(service.criar).toHaveBeenCalledWith({ nome: "Suporte", ativo: false });
+    });
+  });
 });

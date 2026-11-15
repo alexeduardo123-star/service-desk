@@ -16,6 +16,9 @@ import Categorias from "../views/Categorias";
 import Prioridades from "../views/Prioridades";
 import Equipamentos from "../views/Equipamentos";
 import Contratos from "../views/Contratos";
+import Servicos from "../views/Servicos";
+import Assuntos from "../views/Assuntos";
+import Formularios from "../views/Formularios";
 import Configuracoes from "../views/Configuracoes";
 import Notificacoes from "../views/Notificacoes";
 import Kanban from "../views/Kanban";
@@ -104,6 +107,30 @@ export default function AppRoutes() {
           element={
             <RotaPrivada roles={["ADMIN"]}>
               <Prioridades />
+            </RotaPrivada>
+          }
+        />
+        <Route
+          path="/admin/servicos"
+          element={
+            <RotaPrivada roles={["ADMIN"]}>
+              <Servicos />
+            </RotaPrivada>
+          }
+        />
+        <Route
+          path="/admin/assuntos"
+          element={
+            <RotaPrivada roles={["ADMIN"]}>
+              <Assuntos />
+            </RotaPrivada>
+          }
+        />
+        <Route
+          path="/admin/formularios"
+          element={
+            <RotaPrivada roles={["ADMIN"]}>
+              <Formularios />
             </RotaPrivada>
           }
         />

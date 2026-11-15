@@ -56,6 +56,9 @@ export default function AppLayout() {
               <NavLink to="/admin/departamentos" className={linkClasse}>Departamentos</NavLink>
               <NavLink to="/admin/categorias" className={linkClasse}>Categorias</NavLink>
               <NavLink to="/admin/prioridades" className={linkClasse}>Prioridades</NavLink>
+              <NavLink to="/admin/servicos" className={linkClasse}>Serviços</NavLink>
+              <NavLink to="/admin/assuntos" className={linkClasse}>Assuntos</NavLink>
+              <NavLink to="/admin/formularios" className={linkClasse}>Formulários</NavLink>
             </>
           )}
         </nav>
