@@ -242,3 +242,70 @@ model ContratoManutencao {
   @@index([equipamentoId])
   @@map("contratos_manutencao")
 }
+
+enum TipoCampoFormulario {
+  TEXTO
+  TEXTO_LONGO
+  NUMERO
+  DATA
+  SELECAO
+  CHECKBOX
+}
+
+model Servico {
+  id        Int      @id @default(autoincrement())
+  nome      String   @unique
+  descricao String?
+  ativo     Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  assuntos Assunto[]
+
+  @@map("servicos")
+}
+
+model Assunto {
+  id           Int         @id @default(autoincrement())
+  nome         String
+  descricao    String?
+  ativo        Boolean     @default(true)
+  servicoId    Int
+  servico      Servico     @relation(fields: [servicoId], references: [id], onDelete: Restrict)
+  formularioId Int?
+  formulario   Formulario? @relation(fields: [formularioId], references: [id], onDelete: Restrict)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  @@unique([servicoId, nome])
+  @@index([formularioId])
+  @@map("assuntos")
+}
+
+model Formulario {
+  id        Int      @id @default(autoincrement())
+  nome      String   @unique
+  descricao String?
+  ativo     Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  campos   FormularioCampo[]
+  assuntos Assunto[]
+
+  @@map("formularios")
+}
+
+model FormularioCampo {
+  id           Int                 @id @default(autoincrement())
+  formularioId Int
+  formulario   Formulario          @relation(fields: [formularioId], references: [id], onDelete: Cascade)
+  rotulo       String
+  tipo         TipoCampoFormulario @default(TEXTO)
+  obrigatorio  Boolean             @default(false)
+  opcoes       String[]            @default([])
+  ordem        Int                 @default(0)
+
+  @@index([formularioId])
+  @@map("formulario_campos")
+}

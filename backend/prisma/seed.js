@@ -202,6 +202,60 @@ async function main() {
     });
   }
 
+  // Catálogo de serviços e assuntos, com formulários de exemplo vinculados.
+  if ((await prisma.servico.count()) === 0) {
+    const formAcesso = await prisma.formulario.create({
+      data: {
+        nome: "Solicitação de acesso",
+        descricao: "Dados necessários para liberar acesso a um sistema",
+        campos: {
+          create: [
+            { rotulo: "Sistema", tipo: "SELECAO", obrigatorio: true, opcoes: ["ERP", "CRM", "E-mail", "VPN"], ordem: 0 },
+            { rotulo: "Perfil de acesso desejado", tipo: "TEXTO", obrigatorio: true, ordem: 1 },
+            { rotulo: "Justificativa", tipo: "TEXTO_LONGO", obrigatorio: true, ordem: 2 },
+          ],
+        },
+      },
+    });
+    const formEquipamento = await prisma.formulario.create({
+      data: {
+        nome: "Problema em equipamento",
+        campos: {
+          create: [
+            { rotulo: "Patrimônio / nº de série", tipo: "TEXTO", obrigatorio: true, ordem: 0 },
+            { rotulo: "Desde quando ocorre?", tipo: "DATA", ordem: 1 },
+            { rotulo: "O equipamento liga?", tipo: "CHECKBOX", ordem: 2 },
+          ],
+        },
+      },
+    });
+
+    await prisma.servico.create({
+      data: {
+        nome: "Acessos e permissões",
+        descricao: "Criação e liberação de acessos a sistemas",
+        assuntos: {
+          create: [
+            { nome: "Novo acesso a sistema", formularioId: formAcesso.id },
+            { nome: "Redefinição de senha" },
+          ],
+        },
+      },
+    });
+    await prisma.servico.create({
+      data: {
+        nome: "Suporte a equipamentos",
+        descricao: "Computadores, impressoras e periféricos",
+        assuntos: {
+          create: [
+            { nome: "Computador com defeito", formularioId: formEquipamento.id },
+            { nome: "Impressora não imprime", formularioId: formEquipamento.id },
+          ],
+        },
+      },
+    });
+  }
+
   // Ids foram fixados manualmente acima (upsert por id) para dados de
   // referência estáveis; realinha as sequences do Postgres para que os
   // próximos INSERTs (feitos pela API) não colidam com esses ids.

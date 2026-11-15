@@ -10,6 +10,7 @@
 CREATE TYPE "PapelUsuario" AS ENUM ('ADMIN', 'TECNICO', 'SOLICITANTE');
 CREATE TYPE "StatusTicket" AS ENUM ('ABERTO', 'EM_ANDAMENTO', 'FECHADO');
 CREATE TYPE "TipoNotificacao" AS ENUM ('TICKET_CRIADO', 'TICKET_ATRIBUIDO', 'TICKET_STATUS', 'TICKET_COMENTARIO', 'SISTEMA');
+CREATE TYPE "TipoCampoFormulario" AS ENUM ('TEXTO', 'TEXTO_LONGO', 'NUMERO', 'DATA', 'SELECAO', 'CHECKBOX');
 
 CREATE TABLE "departamentos" (
     "id"        SERIAL PRIMARY KEY,
@@ -125,9 +126,51 @@ CREATE TABLE "relatorios_salvos" (
     "updatedAt"  TIMESTAMP(3) NOT NULL
 );
 
+CREATE TABLE "servicos" (
+    "id"         SERIAL PRIMARY KEY,
+    "nome"       TEXT NOT NULL UNIQUE,
+    "descricao"  TEXT,
+    "ativo"      BOOLEAN NOT NULL DEFAULT TRUE,
+    "createdAt"  TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt"  TIMESTAMP(3) NOT NULL
+);
+
+CREATE TABLE "formularios" (
+    "id"         SERIAL PRIMARY KEY,
+    "nome"       TEXT NOT NULL UNIQUE,
+    "descricao"  TEXT,
+    "ativo"      BOOLEAN NOT NULL DEFAULT TRUE,
+    "createdAt"  TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt"  TIMESTAMP(3) NOT NULL
+);
+
+CREATE TABLE "formulario_campos" (
+    "id"            SERIAL PRIMARY KEY,
+    "formularioId"  INTEGER NOT NULL REFERENCES "formularios" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+    "rotulo"        TEXT NOT NULL,
+    "tipo"          "TipoCampoFormulario" NOT NULL DEFAULT 'TEXTO',
+    "obrigatorio"   BOOLEAN NOT NULL DEFAULT FALSE,
+    "opcoes"        TEXT[] DEFAULT ARRAY[]::TEXT[],
+    "ordem"         INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE "assuntos" (
+    "id"            SERIAL PRIMARY KEY,
+    "nome"          TEXT NOT NULL,
+    "descricao"     TEXT,
+    "ativo"         BOOLEAN NOT NULL DEFAULT TRUE,
+    "servicoId"     INTEGER NOT NULL REFERENCES "servicos" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
+    "formularioId"  INTEGER REFERENCES "formularios" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
+    "createdAt"     TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt"     TIMESTAMP(3) NOT NULL,
+    UNIQUE ("servicoId", "nome")
+);
+
 CREATE INDEX "idx_tickets_solicitante" ON "tickets" ("solicitanteId");
 CREATE INDEX "idx_tickets_tecnico" ON "tickets" ("tecnicoId");
 CREATE INDEX "idx_tickets_status" ON "tickets" ("status");
 CREATE INDEX "idx_comentarios_ticket" ON "comentarios" ("ticketId");
 CREATE INDEX "idx_notificacoes_usuario_lida" ON "notificacoes" ("usuarioId", "lida");
 CREATE INDEX "idx_relatorios_salvos_usuario" ON "relatorios_salvos" ("usuarioId");
+CREATE INDEX "idx_formulario_campos_formulario" ON "formulario_campos" ("formularioId");
+CREATE INDEX "idx_assuntos_formulario" ON "assuntos" ("formularioId");

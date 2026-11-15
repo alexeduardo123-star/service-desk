@@ -294,3 +294,13 @@ npx prisma generate
 ```
 
 Para ambiente local de desenvolvimento com migration nova, use `npx prisma migrate dev` no lugar de `migrate deploy`.
+
+## Serviços, assuntos e formulários
+
+O catálogo de atendimento é organizado em **serviços** (`/servicos`), cada um com vários **assuntos** (`/assuntos`). Um assunto pode ter um **formulário** (`/formularios`) vinculado, com os campos extras que o solicitante deve preencher ao abrir um chamado daquele assunto.
+
+- Leitura (`GET`) liberada para qualquer usuário logado; criação, edição e exclusão somente `ADMIN`.
+- `GET /assuntos?servicoId=1` lista só os assuntos de um serviço; `GET /assuntos/:id` já devolve o formulário com os campos em ordem.
+- Campos do formulário: `TEXTO`, `TEXTO_LONGO`, `NUMERO`, `DATA`, `SELECAO` (exige pelo menos 2 opções) e `CHECKBOX`. Ao editar, a lista de campos enviada substitui a anterior.
+- Não é possível excluir um serviço que tenha assuntos nem um formulário vinculado a algum assunto (retorna `409`).
+
