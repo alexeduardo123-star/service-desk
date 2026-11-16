@@ -23,6 +23,14 @@ describe("montarLinhas", () => {
     expect(linha.slaStatus).toBe("NO_PRAZO");
   });
 
+  it("trata chamado aguardando o usuário como ainda em aberto", () => {
+    const noPrazo = montarLinhas([{ ...base, id: 1, status: "AGUARDANDO_USUARIO", createdAt: h(2), closedAt: null }], AGORA)[0];
+    const vencido = montarLinhas([{ ...base, id: 2, status: "AGUARDANDO_USUARIO", createdAt: h(20), closedAt: null }], AGORA)[0];
+
+    expect(noPrazo).toMatchObject({ status: "AGUARDANDO_USUARIO", fechadoEm: null, horasResolucao: null, slaStatus: "NO_PRAZO" });
+    expect(vencido.slaStatus).toBe("VENCIDO");
+  });
+
   it("calcula horas de resolução e se fechou no prazo", () => {
     const noPrazo = montarLinhas([{ ...base, id: 1, status: "FECHADO", createdAt: h(10), closedAt: h(5) }], AGORA)[0];
     const atrasado = montarLinhas([{ ...base, id: 2, status: "FECHADO", createdAt: h(30), closedAt: h(5) }], AGORA)[0];

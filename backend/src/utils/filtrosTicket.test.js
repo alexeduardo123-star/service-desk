@@ -23,6 +23,10 @@ describe("montarFiltroTickets", () => {
     expect(where).toEqual({ status: "FECHADO", categoriaId: 2, prioridadeId: 3 });
   });
 
+  it("aceita o status de espera do usuário", () => {
+    expect(montarFiltroTickets({ status: "AGUARDANDO_USUARIO" }, ADMIN)).toEqual({ status: "AGUARDANDO_USUARIO" });
+  });
+
   it("ignora valores inválidos em vez de quebrar a query", () => {
     const where = montarFiltroTickets({ status: "QUALQUER", categoriaId: "abc", prioridadeId: "-1", tecnicoId: "xyz" }, ADMIN);
     expect(where).toEqual({});

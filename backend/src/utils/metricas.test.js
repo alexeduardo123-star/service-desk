@@ -52,7 +52,37 @@ describe("calcularMetricas", () => {
   const m = calcularMetricas(tickets, { agora: AGORA });
 
   it("conta os totais por status, sem técnico e SLA vencido", () => {
-    expect(m.totais).toEqual({ total: 4, abertos: 1, emAndamento: 1, fechados: 2, semTecnico: 1, slaVencidos: 1 });
+    expect(m.totais).toEqual({ total: 4, abertos: 1, emAndamento: 1, aguardandoUsuario: 0, fechados: 2, semTecnico: 1, slaVencidos: 1 });
+  });
+
+  it("conta e lista os chamados aguardando resposta do usuário", () => {
+    const comEspera = calcularMetricas([...tickets, ticket({ id: 5, status: "AGUARDANDO_USUARIO", createdAt: h(3) })], { agora: AGORA });
+
+    expect(comEspera.totais.aguardandoUsuario).toBe(1);
+    expect(comEspera.totais.total).toBe(5);
+    expect(comEspera.porStatus).toEqual([
+      { status: "ABERTO", total: 1 },
+      { status: "EM_ANDAMENTO", total: 1 },
+      { status: "AGUARDANDO_USUARIO", total: 1 },
+      { status: "FECHADO", total: 2 },
+    ]);
+  });
+
+  it("chamado aguardando o usuário continua sem técnico e fora dos fechados", () => {
+    const m5 = calcularMetricas([ticket({ id: 5, status: "AGUARDANDO_USUARIO", createdAt: h(3) })], { agora: AGORA });
+
+    expect(m5.totais.semTecnico).toBe(1);
+    expect(m5.totais.fechados).toBe(0);
+    expect(m5.tempoMedioResolucaoHoras).toBeNull();
+  });
+
+  it("porStatus traz as quatro situações mesmo sem chamados", () => {
+    expect(calcularMetricas([], { agora: AGORA }).porStatus).toEqual([
+      { status: "ABERTO", total: 0 },
+      { status: "EM_ANDAMENTO", total: 0 },
+      { status: "AGUARDANDO_USUARIO", total: 0 },
+      { status: "FECHADO", total: 0 },
+    ]);
   });
 
   it("agrupa por categoria em ordem decrescente", () => {

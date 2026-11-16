@@ -149,7 +149,7 @@ export default function Kanban() {
       {carregando ? (
         <p className="text-sm text-gray-500">Carregando…</p>
       ) : (
-        <div className="grid gap-4 lg:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {COLUNAS_KANBAN.map((status) => (
             <section
               key={status}

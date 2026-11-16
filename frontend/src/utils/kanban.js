@@ -2,7 +2,12 @@ import { StatusTicket } from "../enum/StatusTicket";
 
 const HORA_MS = 60 * 60 * 1000;
 
-export const COLUNAS_KANBAN = [StatusTicket.ABERTO, StatusTicket.EM_ANDAMENTO, StatusTicket.FECHADO];
+export const COLUNAS_KANBAN = [
+  StatusTicket.ABERTO,
+  StatusTicket.EM_ANDAMENTO,
+  StatusTicket.AGUARDANDO_USUARIO,
+  StatusTicket.FECHADO,
+];
 
 export function agruparPorStatus(tickets) {
   const grupos = Object.fromEntries(COLUNAS_KANBAN.map((status) => [status, []]));

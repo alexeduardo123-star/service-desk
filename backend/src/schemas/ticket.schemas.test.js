@@ -11,8 +11,8 @@ function run(schema, body) {
 }
 
 describe("alterarStatusSchema", () => {
-  it("aceita os três status", () => {
-    for (const status of ["ABERTO", "EM_ANDAMENTO", "FECHADO"]) {
+  it("aceita todos os status do chamado", () => {
+    for (const status of ["ABERTO", "EM_ANDAMENTO", "AGUARDANDO_USUARIO", "FECHADO"]) {
       expect(run(alterarStatusSchema, { status }).next).toHaveBeenCalled();
     }
   });

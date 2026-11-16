@@ -4,7 +4,7 @@
 
 const HORA_MS = 60 * 60 * 1000;
 const DIA_MS = 24 * HORA_MS;
-const STATUS = ["ABERTO", "EM_ANDAMENTO", "FECHADO"];
+const STATUS = ["ABERTO", "EM_ANDAMENTO", "AGUARDANDO_USUARIO", "FECHADO"];
 
 // Fuso padrão para agrupar por dia: Brasília (UTC-3), em minutos.
 const OFFSET_PADRAO_MIN = -180;
@@ -48,6 +48,7 @@ export function calcularMetricas(tickets, { agora = new Date(), dias = 14, offse
     total: tickets.length,
     abertos: tickets.filter((t) => t.status === "ABERTO").length,
     emAndamento: tickets.filter((t) => t.status === "EM_ANDAMENTO").length,
+    aguardandoUsuario: tickets.filter((t) => t.status === "AGUARDANDO_USUARIO").length,
     fechados: fechados.length,
     semTecnico: tickets.filter((t) => t.status !== "FECHADO" && !t.tecnicoId).length,
     slaVencidos: tickets.filter((t) => slaVencido(t, agora)).length,

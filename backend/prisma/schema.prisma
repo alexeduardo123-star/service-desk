@@ -16,6 +16,7 @@ enum PapelUsuario {
 enum StatusTicket {
   ABERTO
   EM_ANDAMENTO
+  AGUARDANDO_USUARIO
   FECHADO
 }
 

@@ -2,7 +2,12 @@ import prisma from "../config/prisma.js";
 import { enviarEmail } from "./mailer.js";
 import { buscarEquipe, buscarUsuario, notificarUsuarios } from "./notificar.js";
 
-const STATUS_LABEL = { ABERTO: "Aberto", EM_ANDAMENTO: "Em andamento", FECHADO: "Fechado" };
+const STATUS_LABEL = {
+  ABERTO: "Aberto",
+  EM_ANDAMENTO: "Em andamento",
+  AGUARDANDO_USUARIO: "Aguardando resposta do usuário",
+  FECHADO: "Fechado",
+};
 
 const DEPS_PADRAO = { prisma, enviarEmail };
 
@@ -22,6 +27,14 @@ export function destinatariosDoComentario(ticket, autor) {
   }
   ids.delete(autor.id);
   return { ids: [...ids], incluirEquipe };
+}
+
+// "Aguardando resposta do usuário" existe justamente esperando o solicitante:
+// quando ele comenta, o chamado volta a andar sozinho, sem ninguém mexer no
+// status na mão. Quem responde tem que ser o solicitante do chamado — comentário
+// de técnico ou admin não tira o chamado da espera.
+export function deveRetomarAtendimento(ticket, autor) {
+  return ticket.status === "AGUARDANDO_USUARIO" && ticket.solicitanteId === autor.id;
 }
 
 async function executar(nome, fn) {
@@ -94,6 +107,26 @@ export function avisarStatusAlterado(ticket, autor, deps = DEPS_PADRAO) {
         tipo: "TICKET_STATUS",
         titulo: `Chamado #${ticket.id}: ${STATUS_LABEL[ticket.status] ?? ticket.status}`,
         mensagem: `O status de "${ticket.titulo}" mudou para ${STATUS_LABEL[ticket.status] ?? ticket.status}.`,
+        ticketId: ticket.id,
+        autorId: autor.id,
+      },
+      deps
+    );
+  });
+}
+
+// Avisa quem está cuidando do chamado que o solicitante respondeu e o
+// atendimento voltou a andar. Sem técnico responsável, avisa a equipe.
+export function avisarRetomadaDeAtendimento(ticket, autor, deps = DEPS_PADRAO) {
+  return executar("avisarRetomadaDeAtendimento", async () => {
+    const tecnico = await buscarUsuario(ticket.tecnicoId, deps);
+    const destinatarios = tecnico ? [tecnico] : await buscarEquipe(deps);
+    await notificarUsuarios(
+      {
+        destinatarios,
+        tipo: "TICKET_STATUS",
+        titulo: `Chamado #${ticket.id} voltou para ${STATUS_LABEL.EM_ANDAMENTO}`,
+        mensagem: `${autor.nome} respondeu em "${ticket.titulo}" e o chamado saiu da espera.`,
         ticketId: ticket.id,
         autorId: autor.id,
       },

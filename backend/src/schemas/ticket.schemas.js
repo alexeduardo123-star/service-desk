@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const alterarStatusSchema = z.object({
-  status: z.enum(["ABERTO", "EM_ANDAMENTO", "FECHADO"], { message: "status inválido" }),
+  status: z.enum(["ABERTO", "EM_ANDAMENTO", "AGUARDANDO_USUARIO", "FECHADO"], { message: "status inválido" }),
 });
 
 export const atribuirSchema = z.object({
