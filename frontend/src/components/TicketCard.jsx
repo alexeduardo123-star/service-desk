@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import StatusBadge from "./StatusBadge";
 import { formatDate } from "../utils/formatDate";
+import { tempoAberto } from "../utils/tempoAberto";
 
 export default function TicketCard({ ticket }) {
   return (
@@ -19,6 +20,7 @@ export default function TicketCard({ ticket }) {
         <span>Solicitante: {ticket.solicitante?.nome}</span>
         {ticket.tecnico && <span>Técnico: {ticket.tecnico.nome}</span>}
         <span>{formatDate(ticket.createdAt)}</span>
+        <span className="font-medium text-gray-600">{tempoAberto(ticket)}</span>
       </div>
     </Link>
   );

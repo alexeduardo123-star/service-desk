@@ -31,7 +31,9 @@ export default function Kanban() {
 
   const carregar = useCallback(async () => {
     try {
-      setTickets(await ticketService.listar());
+      // Mais antigos primeiro: dentro de cada coluna, quem espera há mais tempo
+      // fica no topo (agruparPorStatus preserva a ordem que veio da API).
+      setTickets(await ticketService.listar({ ordem: "antigos" }));
     } catch {
       notificar("Erro ao carregar os chamados", "erro");
     } finally {

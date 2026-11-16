@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { COR_POR_NIVEL } from "../constants/cores";
 import { STATUS_LABEL } from "../constants/labels";
 import { COLUNAS_KANBAN, slaVencido } from "../utils/kanban";
-import { tempoRelativo } from "../utils/tempoRelativo";
+import { tempoAberto } from "../utils/tempoAberto";
 
 export default function KanbanCard({ ticket, podeMover, arrastando, onDragStart, onDragEnd, onMover }) {
   const atrasado = slaVencido(ticket);
@@ -34,7 +34,7 @@ export default function KanbanCard({ ticket, podeMover, arrastando, onDragStart,
       <div className="mt-2 text-xs text-gray-500">
         <p>Solicitante: {ticket.solicitante?.nome}</p>
         <p>{ticket.tecnico ? `Técnico: ${ticket.tecnico.nome}` : "Sem técnico"}</p>
-        <p className="text-gray-400">Aberto {tempoRelativo(ticket.createdAt)}</p>
+        <p className="text-gray-400">{tempoAberto(ticket)}</p>
       </div>
 
       {podeMover && (

@@ -2,15 +2,24 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import ticketService from "../services/ticketService";
 import TicketCard from "../components/TicketCard";
+import SelectField from "../components/SelectField";
 import { StatusTicket } from "../enum/StatusTicket";
 import { STATUS_LABEL } from "../constants/labels";
 import Paginacao from "../components/Paginacao";
 import { paginar } from "../utils/paginar";
 import { lerPreferencias } from "../utils/preferencias";
 
+const ORDENS = [
+  { value: "antigos", label: "Mais antigos primeiro" },
+  { value: "recentes", label: "Mais recentes primeiro" },
+];
+
 export default function Tickets() {
   const [tickets, setTickets] = useState([]);
   const [statusFiltro, setStatusFiltro] = useState("");
+  // Padrão: quem está esperando há mais tempo aparece primeiro. A ordenação é
+  // feita pelo backend (?ordem=), que também joga os fechados para o fim.
+  const [ordem, setOrdem] = useState("antigos");
   const [carregando, setCarregando] = useState(true);
   const [pagina, setPagina] = useState(1);
 
@@ -19,13 +28,18 @@ export default function Tickets() {
     // dentro do corpo do efeito (react-hooks/set-state-in-effect).
     Promise.resolve().then(() => setCarregando(true));
     ticketService
-      .listar(statusFiltro ? { status: statusFiltro } : {})
+      .listar({ ordem, ...(statusFiltro ? { status: statusFiltro } : {}) })
       .then(setTickets)
       .finally(() => setCarregando(false));
-  }, [statusFiltro]);
+  }, [statusFiltro, ordem]);
 
   function mudarFiltro(status) {
     setStatusFiltro(status);
+    setPagina(1);
+  }
+
+  function mudarOrdem(novaOrdem) {
+    setOrdem(novaOrdem);
     setPagina(1);
   }
 
@@ -40,22 +54,32 @@ export default function Tickets() {
         </Link>
       </div>
 
-      <div className="mb-4 flex gap-2">
-        <button
-          onClick={() => mudarFiltro("")}
-          className={`rounded-full px-3 py-1 text-xs font-medium ${statusFiltro === "" ? "bg-gray-800 text-white" : "bg-gray-200 text-gray-700"}`}
-        >
-          Todos
-        </button>
-        {Object.values(StatusTicket).map((status) => (
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap gap-2">
           <button
-            key={status}
-            onClick={() => mudarFiltro(status)}
-            className={`rounded-full px-3 py-1 text-xs font-medium ${statusFiltro === status ? "bg-gray-800 text-white" : "bg-gray-200 text-gray-700"}`}
+            onClick={() => mudarFiltro("")}
+            className={`rounded-full px-3 py-1 text-xs font-medium ${statusFiltro === "" ? "bg-gray-800 text-white" : "bg-gray-200 text-gray-700"}`}
           >
-            {STATUS_LABEL[status]}
+            Todos
           </button>
-        ))}
+          {Object.values(StatusTicket).map((status) => (
+            <button
+              key={status}
+              onClick={() => mudarFiltro(status)}
+              className={`rounded-full px-3 py-1 text-xs font-medium ${statusFiltro === status ? "bg-gray-800 text-white" : "bg-gray-200 text-gray-700"}`}
+            >
+              {STATUS_LABEL[status]}
+            </button>
+          ))}
+        </div>
+
+        <SelectField
+          aria-label="Ordenar chamados"
+          className="py-1"
+          value={ordem}
+          onChange={(e) => mudarOrdem(e.target.value)}
+          options={ORDENS}
+        />
       </div>
 
       {carregando ? (

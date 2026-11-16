@@ -1,6 +1,6 @@
 import prisma from "../config/prisma.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
-import { montarFiltroTickets } from "../utils/filtrosTicket.js";
+import { montarFiltroTickets, montarOrdenacaoTickets, fechadosNoFim } from "../utils/filtrosTicket.js";
 import { avisarTicketCriado, avisarTicketAtribuido, avisarStatusAlterado } from "../utils/eventosTicket.js";
 
 const include = {
@@ -17,8 +17,9 @@ function podeVer(ticket, user) {
 
 export const listar = asyncHandler(async (req, res) => {
   const where = montarFiltroTickets(req.query, req.user);
-  const tickets = await prisma.ticket.findMany({ where, include, orderBy: { createdAt: "desc" } });
-  res.json(tickets);
+  const { orderBy } = montarOrdenacaoTickets(req.query);
+  const tickets = await prisma.ticket.findMany({ where, include, orderBy });
+  res.json(fechadosNoFim(tickets));
 });
 
 export const buscar = asyncHandler(async (req, res) => {

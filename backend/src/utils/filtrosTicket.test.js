@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { montarFiltroTickets } from "./filtrosTicket.js";
+import { montarFiltroTickets, montarOrdenacaoTickets, fechadosNoFim, ORDENS_VALIDAS } from "./filtrosTicket.js";
 
 const ADMIN = { id: 1, papel: "ADMIN" };
 const SOLICITANTE = { id: 9, papel: "SOLICITANTE" };
@@ -48,5 +48,100 @@ describe("montarFiltroTickets", () => {
 
   it("ignora datas inválidas", () => {
     expect(montarFiltroTickets({ de: "ontem", ate: "amanhã" }, ADMIN)).toEqual({});
+  });
+});
+
+function ticket(id, status, createdAt) {
+  return { id, status, createdAt: new Date(createdAt) };
+}
+
+describe("montarOrdenacaoTickets", () => {
+  it("sem ordem na query usa os mais antigos primeiro", () => {
+    expect(montarOrdenacaoTickets()).toEqual({ ordem: "antigos", orderBy: { createdAt: "asc" } });
+    expect(montarOrdenacaoTickets({})).toEqual({ ordem: "antigos", orderBy: { createdAt: "asc" } });
+  });
+
+  it("ordem=recentes inverte para os mais novos primeiro", () => {
+    expect(montarOrdenacaoTickets({ ordem: "recentes" })).toEqual({
+      ordem: "recentes",
+      orderBy: { createdAt: "desc" },
+    });
+  });
+
+  it("ordem=antigos é explicitamente aceita", () => {
+    expect(montarOrdenacaoTickets({ ordem: "antigos" })).toEqual({
+      ordem: "antigos",
+      orderBy: { createdAt: "asc" },
+    });
+  });
+
+  it("ordem inválida cai no padrão em vez de ir para o banco", () => {
+    for (const ordem of ["", "qualquer", "createdAt desc", null, 0, ["recentes"]]) {
+      expect(montarOrdenacaoTickets({ ordem })).toEqual({ ordem: "antigos", orderBy: { createdAt: "asc" } });
+    }
+  });
+
+  it("só existem duas ordens possíveis", () => {
+    expect(ORDENS_VALIDAS).toEqual(["antigos", "recentes"]);
+  });
+});
+
+describe("fechadosNoFim", () => {
+  it("manda os fechados para o fim da lista", () => {
+    const tickets = [
+      ticket(1, "FECHADO", "2026-11-01T10:00:00Z"),
+      ticket(2, "ABERTO", "2026-11-02T10:00:00Z"),
+      ticket(3, "FECHADO", "2026-11-03T10:00:00Z"),
+      ticket(4, "EM_ANDAMENTO", "2026-11-04T10:00:00Z"),
+    ];
+
+    expect(fechadosNoFim(tickets).map((t) => t.id)).toEqual([2, 4, 1, 3]);
+  });
+
+  it("preserva a ordem por data que veio do banco dentro de cada grupo", () => {
+    // Como o banco já devolve por createdAt asc, abertos e em andamento ficam
+    // intercalados pela data — não agrupados por status.
+    const tickets = [
+      ticket(10, "ABERTO", "2026-11-01T10:00:00Z"),
+      ticket(11, "EM_ANDAMENTO", "2026-11-02T10:00:00Z"),
+      ticket(12, "FECHADO", "2026-11-03T10:00:00Z"),
+      ticket(13, "ABERTO", "2026-11-04T10:00:00Z"),
+      ticket(14, "FECHADO", "2026-11-05T10:00:00Z"),
+    ];
+
+    expect(fechadosNoFim(tickets).map((t) => t.id)).toEqual([10, 11, 13, 12, 14]);
+  });
+
+  it("mantém a ordem decrescente quando a listagem pede os mais recentes", () => {
+    const tickets = [
+      ticket(14, "FECHADO", "2026-11-05T10:00:00Z"),
+      ticket(13, "ABERTO", "2026-11-04T10:00:00Z"),
+      ticket(12, "FECHADO", "2026-11-03T10:00:00Z"),
+      ticket(11, "EM_ANDAMENTO", "2026-11-02T10:00:00Z"),
+    ];
+
+    expect(fechadosNoFim(tickets).map((t) => t.id)).toEqual([13, 11, 14, 12]);
+  });
+
+  it("não altera a lista recebida", () => {
+    const tickets = [ticket(1, "FECHADO", "2026-11-01T10:00:00Z"), ticket(2, "ABERTO", "2026-11-02T10:00:00Z")];
+
+    const ordenados = fechadosNoFim(tickets);
+
+    expect(tickets.map((t) => t.id)).toEqual([1, 2]);
+    expect(ordenados).not.toBe(tickets);
+  });
+
+  it("aceita lista vazia e chamada sem argumento", () => {
+    expect(fechadosNoFim([])).toEqual([]);
+    expect(fechadosNoFim()).toEqual([]);
+  });
+
+  it("listas só de fechados ou só de abertos ficam intactas", () => {
+    const fechados = [ticket(1, "FECHADO", "2026-11-01T10:00:00Z"), ticket(2, "FECHADO", "2026-11-02T10:00:00Z")];
+    const abertos = [ticket(3, "ABERTO", "2026-11-01T10:00:00Z"), ticket(4, "EM_ANDAMENTO", "2026-11-02T10:00:00Z")];
+
+    expect(fechadosNoFim(fechados).map((t) => t.id)).toEqual([1, 2]);
+    expect(fechadosNoFim(abertos).map((t) => t.id)).toEqual([3, 4]);
   });
 });

@@ -55,3 +55,20 @@ export function montarFiltroTickets(query = {}, user) {
 
   return where;
 }
+
+// Ordenação da listagem. O padrão é "antigos": quem está esperando há mais
+// tempo aparece primeiro. O seletor da tela manda ?ordem=recentes para inverter.
+export const ORDENS_VALIDAS = ["antigos", "recentes"];
+
+export function montarOrdenacaoTickets(query = {}) {
+  const ordem = ORDENS_VALIDAS.includes(query.ordem) ? query.ordem : "antigos";
+  return { ordem, orderBy: { createdAt: ordem === "recentes" ? "desc" : "asc" } };
+}
+
+// Chamado fechado não precisa de atenção, então sai da frente da fila. O Prisma
+// não ordena por expressão (status é enum e a ordem dele não é a que queremos),
+// então a separação é feita aqui — o sort é estável, logo a ordem por data que
+// veio do banco se mantém dentro de cada grupo.
+export function fechadosNoFim(tickets = []) {
+  return [...tickets].sort((a, b) => Number(a.status === "FECHADO") - Number(b.status === "FECHADO"));
+}
