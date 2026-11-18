@@ -4,7 +4,12 @@ import {
   avisarStatusAlterado,
   avisarTicketCriado,
   avisarRetomadaDeAtendimento,
+  avisarTicketSuspenso,
+  avisarTicketRetomado,
+  comentarioDeSuspensao,
   deveRetomarAtendimento,
+  erroAoRetomar,
+  erroAoSuspender,
 } from "./eventosTicket.js";
 
 const TICKET = { id: 7, titulo: "Notebook não liga", solicitanteId: 10, tecnicoId: 20, status: "FECHADO" };
@@ -131,5 +136,70 @@ describe("avisarRetomadaDeAtendimento", () => {
     await avisarRetomadaDeAtendimento(AGUARDANDO, { id: 10, nome: "Ana" }, deps);
     console.error = spy;
     expect(deps.prisma.notificacao.createMany).not.toHaveBeenCalled();
+  });
+});
+
+const ANA = { 10: { id: 10, nome: "Ana", email: "a@a.com", ativo: true } };
+const SUSPENSO = { ...TICKET, status: "SUSPENSO" };
+
+describe("regras de suspensão", () => {
+  it("suspende chamado aberto, em andamento ou aguardando o usuário", () => {
+    for (const status of ["ABERTO", "EM_ANDAMENTO", "AGUARDANDO_USUARIO"]) {
+      expect(erroAoSuspender({ ...TICKET, status })).toBeNull();
+    }
+  });
+
+  it("não suspende chamado fechado nem um já suspenso", () => {
+    expect(erroAoSuspender(TICKET)).toBe("Chamado fechado não pode ser suspenso");
+    expect(erroAoSuspender(SUSPENSO)).toBe("O chamado já está suspenso");
+  });
+
+  it("só retoma chamado suspenso", () => {
+    expect(erroAoRetomar(SUSPENSO)).toBeNull();
+    for (const status of ["ABERTO", "EM_ANDAMENTO", "AGUARDANDO_USUARIO", "FECHADO"]) {
+      expect(erroAoRetomar({ ...TICKET, status })).toBe("Só é possível retomar um chamado suspenso");
+    }
+  });
+
+  it("o comentário de suspensão traz o motivo", () => {
+    expect(comentarioDeSuspensao("aguardando peça")).toBe("Chamado suspenso. Motivo: aguardando peça");
+  });
+});
+
+describe("avisarTicketSuspenso", () => {
+  it("notifica o solicitante com o motivo", async () => {
+    const deps = depsFalsas({ usuarios: ANA });
+
+    await avisarTicketSuspenso(SUSPENSO, { id: 20, nome: "Téc" }, "aguardando peça", deps);
+
+    const data = deps.prisma.notificacao.createMany.mock.calls[0][0].data;
+    expect(data).toHaveLength(1);
+    expect(data[0]).toMatchObject({ usuarioId: 10, tipo: "TICKET_STATUS", ticketId: 7 });
+    expect(data[0].titulo).toBe("Chamado #7: Suspenso");
+    expect(data[0].mensagem).toContain("Téc");
+    expect(data[0].mensagem).toContain("aguardando peça");
+  });
+
+  it("nunca lança, mesmo se o banco falhar", async () => {
+    const deps = depsFalsas();
+    deps.prisma.usuario.findUnique = vi.fn(() => Promise.reject(new Error("falhou")));
+    const spy = console.error;
+    console.error = () => {};
+    await avisarTicketSuspenso(SUSPENSO, { id: 20, nome: "Téc" }, "motivo", deps);
+    console.error = spy;
+    expect(deps.prisma.notificacao.createMany).not.toHaveBeenCalled();
+  });
+});
+
+describe("avisarTicketRetomado", () => {
+  it("notifica o solicitante que o chamado voltou para Em andamento", async () => {
+    const deps = depsFalsas({ usuarios: ANA });
+
+    await avisarTicketRetomado({ ...TICKET, status: "EM_ANDAMENTO" }, { id: 1, nome: "Admin" }, deps);
+
+    const data = deps.prisma.notificacao.createMany.mock.calls[0][0].data[0];
+    expect(data).toMatchObject({ usuarioId: 10, tipo: "TICKET_STATUS", ticketId: 7 });
+    expect(data.titulo).toContain("Em andamento");
+    expect(data.mensagem).toContain("Admin");
   });
 });

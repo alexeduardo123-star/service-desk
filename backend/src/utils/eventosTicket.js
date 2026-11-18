@@ -6,6 +6,7 @@ const STATUS_LABEL = {
   ABERTO: "Aberto",
   EM_ANDAMENTO: "Em andamento",
   AGUARDANDO_USUARIO: "Aguardando resposta do usuário",
+  SUSPENSO: "Suspenso",
   FECHADO: "Fechado",
 };
 
@@ -35,6 +36,25 @@ export function destinatariosDoComentario(ticket, autor) {
 // de técnico ou admin não tira o chamado da espera.
 export function deveRetomarAtendimento(ticket, autor) {
   return ticket.status === "AGUARDANDO_USUARIO" && ticket.solicitanteId === autor.id;
+}
+
+// Regras de suspensão. Devolvem a mensagem de erro para a API, ou null quando a
+// ação pode seguir. Chamado fechado não é suspenso (já não conta SLA) e
+// suspender duas vezes criaria um segundo comentário de motivo à toa.
+export function erroAoSuspender(ticket) {
+  if (ticket.status === "SUSPENSO") return "O chamado já está suspenso";
+  if (ticket.status === "FECHADO") return "Chamado fechado não pode ser suspenso";
+  return null;
+}
+
+export function erroAoRetomar(ticket) {
+  return ticket.status === "SUSPENSO" ? null : "Só é possível retomar um chamado suspenso";
+}
+
+// O motivo vira um comentário comum no chamado, assim aparece no histórico da
+// conversa para o solicitante e para a equipe.
+export function comentarioDeSuspensao(motivo) {
+  return `Chamado suspenso. Motivo: ${motivo}`;
 }
 
 async function executar(nome, fn) {
@@ -127,6 +147,42 @@ export function avisarRetomadaDeAtendimento(ticket, autor, deps = DEPS_PADRAO) {
         tipo: "TICKET_STATUS",
         titulo: `Chamado #${ticket.id} voltou para ${STATUS_LABEL.EM_ANDAMENTO}`,
         mensagem: `${autor.nome} respondeu em "${ticket.titulo}" e o chamado saiu da espera.`,
+        ticketId: ticket.id,
+        autorId: autor.id,
+      },
+      deps
+    );
+  });
+}
+
+// Avisa o solicitante que o atendimento foi suspenso, já com o motivo.
+export function avisarTicketSuspenso(ticket, autor, motivo, deps = DEPS_PADRAO) {
+  return executar("avisarTicketSuspenso", async () => {
+    const solicitante = await buscarUsuario(ticket.solicitanteId, deps);
+    await notificarUsuarios(
+      {
+        destinatarios: [solicitante],
+        tipo: "TICKET_STATUS",
+        titulo: `Chamado #${ticket.id}: ${STATUS_LABEL.SUSPENSO}`,
+        mensagem: `${autor.nome} suspendeu "${ticket.titulo}". Motivo: ${motivo}`,
+        ticketId: ticket.id,
+        autorId: autor.id,
+      },
+      deps
+    );
+  });
+}
+
+// Avisa o solicitante que o chamado saiu da suspensão e voltou a andar.
+export function avisarTicketRetomado(ticket, autor, deps = DEPS_PADRAO) {
+  return executar("avisarTicketRetomado", async () => {
+    const solicitante = await buscarUsuario(ticket.solicitanteId, deps);
+    await notificarUsuarios(
+      {
+        destinatarios: [solicitante],
+        tipo: "TICKET_STATUS",
+        titulo: `Chamado #${ticket.id} voltou para ${STATUS_LABEL.EM_ANDAMENTO}`,
+        mensagem: `${autor.nome} retomou o atendimento de "${ticket.titulo}".`,
         ticketId: ticket.id,
         autorId: autor.id,
       },

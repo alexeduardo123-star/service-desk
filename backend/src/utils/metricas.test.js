@@ -35,6 +35,12 @@ describe("slaVencido / fechadoNoPrazo", () => {
     expect(slaVencido(ticket({ status: "FECHADO", prioridade: ALTA, createdAt: h(50) }), AGORA)).toBe(false);
   });
 
+  it("chamado suspenso não vence enquanto está suspenso, mas volta a contar ao retomar", () => {
+    expect(slaVencido(ticket({ status: "SUSPENSO", prioridade: ALTA, createdAt: h(50) }), AGORA)).toBe(false);
+    // O relógio é createdAt -> agora: retomado, o tempo suspenso conta de novo.
+    expect(slaVencido(ticket({ status: "EM_ANDAMENTO", prioridade: ALTA, createdAt: h(50) }), AGORA)).toBe(true);
+  });
+
   it("avalia se o fechamento respeitou o SLA", () => {
     expect(fechadoNoPrazo(ticket({ status: "FECHADO", prioridade: ALTA, createdAt: h(10), closedAt: h(5) }))).toBe(true);
     expect(fechadoNoPrazo(ticket({ status: "FECHADO", prioridade: ALTA, createdAt: h(20), closedAt: h(5) }))).toBe(false);
@@ -52,7 +58,7 @@ describe("calcularMetricas", () => {
   const m = calcularMetricas(tickets, { agora: AGORA });
 
   it("conta os totais por status, sem técnico e SLA vencido", () => {
-    expect(m.totais).toEqual({ total: 4, abertos: 1, emAndamento: 1, aguardandoUsuario: 0, fechados: 2, semTecnico: 1, slaVencidos: 1 });
+    expect(m.totais).toEqual({ total: 4, abertos: 1, emAndamento: 1, aguardandoUsuario: 0, suspensos: 0, fechados: 2, semTecnico: 1, slaVencidos: 1 });
   });
 
   it("conta e lista os chamados aguardando resposta do usuário", () => {
@@ -64,6 +70,7 @@ describe("calcularMetricas", () => {
       { status: "ABERTO", total: 1 },
       { status: "EM_ANDAMENTO", total: 1 },
       { status: "AGUARDANDO_USUARIO", total: 1 },
+      { status: "SUSPENSO", total: 0 },
       { status: "FECHADO", total: 2 },
     ]);
   });
@@ -76,13 +83,24 @@ describe("calcularMetricas", () => {
     expect(m5.tempoMedioResolucaoHoras).toBeNull();
   });
 
-  it("porStatus traz as quatro situações mesmo sem chamados", () => {
+  it("porStatus traz as cinco situações mesmo sem chamados", () => {
     expect(calcularMetricas([], { agora: AGORA }).porStatus).toEqual([
       { status: "ABERTO", total: 0 },
       { status: "EM_ANDAMENTO", total: 0 },
       { status: "AGUARDANDO_USUARIO", total: 0 },
+      { status: "SUSPENSO", total: 0 },
       { status: "FECHADO", total: 0 },
     ]);
+  });
+
+  it("conta os suspensos e não os trata como SLA vencido", () => {
+    // Alta = SLA de 8h; criado há 20h, estaria vencido se não estivesse suspenso.
+    const suspenso = ticket({ id: 6, status: "SUSPENSO", createdAt: h(20), prioridade: ALTA });
+    const ms = calcularMetricas([suspenso], { agora: AGORA });
+
+    expect(ms.totais).toMatchObject({ total: 1, suspensos: 1, fechados: 0, semTecnico: 1, slaVencidos: 0 });
+    expect(ms.porStatus.find((s) => s.status === "SUSPENSO").total).toBe(1);
+    expect(ms.tempoMedioResolucaoHoras).toBeNull();
   });
 
   it("agrupa por categoria em ordem decrescente", () => {

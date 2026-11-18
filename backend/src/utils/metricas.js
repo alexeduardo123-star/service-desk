@@ -4,7 +4,7 @@
 
 const HORA_MS = 60 * 60 * 1000;
 const DIA_MS = 24 * HORA_MS;
-const STATUS = ["ABERTO", "EM_ANDAMENTO", "AGUARDANDO_USUARIO", "FECHADO"];
+const STATUS = ["ABERTO", "EM_ANDAMENTO", "AGUARDANDO_USUARIO", "SUSPENSO", "FECHADO"];
 
 // Fuso padrão para agrupar por dia: Brasília (UTC-3), em minutos.
 const OFFSET_PADRAO_MIN = -180;
@@ -14,8 +14,11 @@ export function horasEntre(inicio, fim) {
 }
 
 // Chamado em aberto cujo prazo de SLA (horas da prioridade) já passou.
+// Suspenso não conta como vencido enquanto estiver suspenso. O relógio do SLA
+// continua sendo createdAt -> agora (não há registro de quando a suspensão
+// começou), então ao retomar o tempo suspenso volta a contar.
 export function slaVencido(ticket, agora = new Date()) {
-  if (ticket.status === "FECHADO" || !ticket.prioridade?.slaHoras) return false;
+  if (ticket.status === "FECHADO" || ticket.status === "SUSPENSO" || !ticket.prioridade?.slaHoras) return false;
   return horasEntre(ticket.createdAt, agora) > ticket.prioridade.slaHoras;
 }
 
@@ -49,6 +52,7 @@ export function calcularMetricas(tickets, { agora = new Date(), dias = 14, offse
     abertos: tickets.filter((t) => t.status === "ABERTO").length,
     emAndamento: tickets.filter((t) => t.status === "EM_ANDAMENTO").length,
     aguardandoUsuario: tickets.filter((t) => t.status === "AGUARDANDO_USUARIO").length,
+    suspensos: tickets.filter((t) => t.status === "SUSPENSO").length,
     fechados: fechados.length,
     semTecnico: tickets.filter((t) => t.status !== "FECHADO" && !t.tecnicoId).length,
     slaVencidos: tickets.filter((t) => slaVencido(t, agora)).length,

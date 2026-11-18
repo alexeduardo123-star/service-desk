@@ -16,6 +16,12 @@ describe("StatusBadge", () => {
     expect(container.firstChild.className).toContain("bg-purple-100");
   });
 
+  it("mostra o rótulo de suspenso com cor própria", () => {
+    const { container } = render(<StatusBadge status={StatusTicket.SUSPENSO} />);
+    expect(screen.getByText("Suspenso")).toBeInTheDocument();
+    expect(container.firstChild.className).toContain("bg-slate-200");
+  });
+
   it("cai para o valor bruto quando o status não tem rótulo mapeado", () => {
     render(<StatusBadge status="STATUS_DESCONHECIDO" />);
     expect(screen.getByText("STATUS_DESCONHECIDO")).toBeInTheDocument();

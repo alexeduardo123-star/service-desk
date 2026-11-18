@@ -7,9 +7,9 @@ import StatusBadge from "../components/StatusBadge";
 import Botao from "../components/Botao";
 import { useAuth } from "../auth/useAuth";
 import { PapelUsuario } from "../enum/PapelUsuario";
-import { StatusTicket } from "../enum/StatusTicket";
 import { STATUS_LABEL } from "../constants/labels";
 import { formatDate } from "../utils/formatDate";
+import { STATUS_SELECIONAVEIS, podeRetomar, podeSuspender } from "../utils/suspensao";
 import { useNotification } from "../store/useNotification";
 
 export default function TicketDetalhe() {
@@ -19,6 +19,9 @@ export default function TicketDetalhe() {
   const [ticket, setTicket] = useState(null);
   const [tecnicos, setTecnicos] = useState([]);
   const [mensagem, setMensagem] = useState("");
+  const [suspendendo, setSuspendendo] = useState(false);
+  const [motivo, setMotivo] = useState("");
+  const [enviando, setEnviando] = useState(false);
   const podeGerenciar = usuario.papel === PapelUsuario.ADMIN || usuario.papel === PapelUsuario.TECNICO;
 
   async function carregar() {
@@ -39,6 +42,44 @@ export default function TicketDetalhe() {
     await ticketService.alterarStatus(id, status);
     notificar("Status atualizado");
     carregar();
+  }
+
+  async function suspender(e) {
+    e.preventDefault();
+    if (!motivo.trim()) {
+      notificar("Informe o motivo da suspensão", "erro");
+      return;
+    }
+    setEnviando(true);
+    try {
+      await ticketService.suspender(id, motivo.trim());
+      notificar("Chamado suspenso");
+      setSuspendendo(false);
+      setMotivo("");
+      carregar();
+    } catch (err) {
+      notificar(err.response?.data?.erro || "Não foi possível suspender o chamado", "erro");
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  async function retomar() {
+    setEnviando(true);
+    try {
+      await ticketService.retomar(id);
+      notificar("Chamado retomado");
+      carregar();
+    } catch (err) {
+      notificar(err.response?.data?.erro || "Não foi possível retomar o chamado", "erro");
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  function cancelarSuspensao() {
+    setSuspendendo(false);
+    setMotivo("");
   }
 
   async function atribuir(tecnicoId) {
@@ -78,18 +119,26 @@ export default function TicketDetalhe() {
 
       {podeGerenciar && (
         <div className="mb-6 flex flex-wrap items-center gap-3 rounded-lg border border-gray-200 bg-white p-4">
-          <label className="flex items-center gap-2 text-sm text-gray-700">
-            Status:
-            <select
-              className="rounded-md border border-gray-300 px-2 py-1 text-sm"
-              value={ticket.status}
-              onChange={(e) => alterarStatus(e.target.value)}
-            >
-              {Object.values(StatusTicket).map((s) => (
-                <option key={s} value={s}>{STATUS_LABEL[s]}</option>
-              ))}
-            </select>
-          </label>
+          {podeRetomar(ticket) ? (
+            <Botao onClick={retomar} disabled={enviando}>Retomar</Botao>
+          ) : (
+            <label className="flex items-center gap-2 text-sm text-gray-700">
+              Status:
+              <select
+                className="rounded-md border border-gray-300 px-2 py-1 text-sm"
+                value={ticket.status}
+                onChange={(e) => alterarStatus(e.target.value)}
+              >
+                {STATUS_SELECIONAVEIS.map((s) => (
+                  <option key={s} value={s}>{STATUS_LABEL[s]}</option>
+                ))}
+              </select>
+            </label>
+          )}
+
+          {podeSuspender(ticket) && !suspendendo && (
+            <Botao variante="secundario" onClick={() => setSuspendendo(true)}>Suspender</Botao>
+          )}
 
           {usuario.papel === PapelUsuario.TECNICO && !ticket.tecnico && (
             <Botao onClick={() => atribuir(usuario.id)}>Atribuir a mim</Botao>
@@ -109,6 +158,29 @@ export default function TicketDetalhe() {
                 ))}
               </select>
             </label>
+          )}
+
+          {suspendendo && (
+            <form onSubmit={suspender} className="flex w-full flex-col gap-2">
+              <label htmlFor="motivo-suspensao" className="text-sm font-medium text-gray-700">
+                Motivo da suspensão
+              </label>
+              <textarea
+                id="motivo-suspensao"
+                rows={3}
+                required
+                maxLength={1000}
+                className="rounded-md border border-gray-300 px-3 py-2 text-sm"
+                placeholder="Ex.: aguardando peça do fornecedor"
+                value={motivo}
+                onChange={(e) => setMotivo(e.target.value)}
+              />
+              <p className="text-xs text-gray-500">O motivo fica registrado como comentário e o solicitante é avisado.</p>
+              <div className="flex gap-2">
+                <Botao type="submit" disabled={enviando || !motivo.trim()}>Confirmar suspensão</Botao>
+                <Botao type="button" variante="secundario" onClick={cancelarSuspensao}>Cancelar</Botao>
+              </div>
+            </form>
           )}
         </div>
       )}

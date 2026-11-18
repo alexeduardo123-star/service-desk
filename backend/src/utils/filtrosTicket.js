@@ -2,7 +2,7 @@
 // Usado pela listagem de chamados (lista e kanban) e pelos relatórios, assim
 // os filtros se comportam igual nos dois lugares.
 
-const STATUS_VALIDOS = ["ABERTO", "EM_ANDAMENTO", "AGUARDANDO_USUARIO", "FECHADO"];
+const STATUS_VALIDOS = ["ABERTO", "EM_ANDAMENTO", "AGUARDANDO_USUARIO", "SUSPENSO", "FECHADO"];
 
 function inteiroPositivo(valor) {
   const n = Number(valor);

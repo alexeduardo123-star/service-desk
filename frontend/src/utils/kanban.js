@@ -1,3 +1,4 @@
+import { PapelUsuario } from "../enum/PapelUsuario";
 import { StatusTicket } from "../enum/StatusTicket";
 
 const HORA_MS = 60 * 60 * 1000;
@@ -6,6 +7,7 @@ export const COLUNAS_KANBAN = [
   StatusTicket.ABERTO,
   StatusTicket.EM_ANDAMENTO,
   StatusTicket.AGUARDANDO_USUARIO,
+  StatusTicket.SUSPENSO,
   StatusTicket.FECHADO,
 ];
 
@@ -16,10 +18,23 @@ export function agruparPorStatus(tickets) {
 }
 
 // Chamado em aberto cujo prazo (SLA da prioridade, em horas) já estourou.
+// Suspenso não aparece como atrasado enquanto estiver suspenso.
 export function slaVencido(ticket, agora = new Date()) {
   const sla = ticket.prioridade?.slaHoras;
-  if (ticket.status === StatusTicket.FECHADO || !sla) return false;
+  if (ticket.status === StatusTicket.FECHADO || ticket.status === StatusTicket.SUSPENSO || !sla) return false;
   return agora.getTime() - new Date(ticket.createdAt).getTime() > sla * HORA_MS;
+}
+
+// O que fazer quando o cartão é solto em outra coluna:
+// - "exigeMotivo": suspender pede motivo, então não dá para fazer arrastando;
+// - "retomar":     suspenso -> em andamento é a ação "Retomar" (avisa o solicitante);
+// - "assumir":     técnico puxa um chamado sem responsável para "Em andamento";
+// - "status":      troca de status comum.
+export function acaoAoMover(ticket, destino, usuario) {
+  if (destino === StatusTicket.SUSPENSO) return "exigeMotivo";
+  if (ticket.status === StatusTicket.SUSPENSO && destino === StatusTicket.EM_ANDAMENTO) return "retomar";
+  if (usuario.papel === PapelUsuario.TECNICO && destino === StatusTicket.EM_ANDAMENTO && !ticket.tecnico) return "assumir";
+  return "status";
 }
 
 // Atualização otimista: devolve uma nova lista com o chamado já no novo status

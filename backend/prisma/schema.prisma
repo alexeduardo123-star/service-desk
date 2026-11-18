@@ -17,6 +17,7 @@ enum StatusTicket {
   ABERTO
   EM_ANDAMENTO
   AGUARDANDO_USUARIO
+  SUSPENSO
   FECHADO
 }
 

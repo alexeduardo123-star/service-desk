@@ -31,6 +31,11 @@ describe("montarLinhas", () => {
     expect(vencido.slaStatus).toBe("VENCIDO");
   });
 
+  it("chamado suspenso fica sem avaliação de SLA, mesmo já fora do prazo", () => {
+    const [linha] = montarLinhas([{ ...base, id: 1, status: "SUSPENSO", createdAt: h(20), closedAt: null }], AGORA);
+    expect(linha).toMatchObject({ status: "SUSPENSO", fechadoEm: null, horasResolucao: null, slaStatus: null });
+  });
+
   it("calcula horas de resolução e se fechou no prazo", () => {
     const noPrazo = montarLinhas([{ ...base, id: 1, status: "FECHADO", createdAt: h(10), closedAt: h(5) }], AGORA)[0];
     const atrasado = montarLinhas([{ ...base, id: 2, status: "FECHADO", createdAt: h(30), closedAt: h(5) }], AGORA)[0];

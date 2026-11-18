@@ -5,6 +5,7 @@ export const CORES_STATUS = {
   [StatusTicket.ABERTO]: "#f59e0b",
   [StatusTicket.EM_ANDAMENTO]: "#2563eb",
   [StatusTicket.AGUARDANDO_USUARIO]: "#8b5cf6",
+  [StatusTicket.SUSPENSO]: "#64748b",
   [StatusTicket.FECHADO]: "#10b981",
 };
 

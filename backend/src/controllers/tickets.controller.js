@@ -1,7 +1,16 @@
 import prisma from "../config/prisma.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { montarFiltroTickets, montarOrdenacaoTickets, fechadosNoFim } from "../utils/filtrosTicket.js";
-import { avisarTicketCriado, avisarTicketAtribuido, avisarStatusAlterado } from "../utils/eventosTicket.js";
+import {
+  avisarTicketCriado,
+  avisarTicketAtribuido,
+  avisarStatusAlterado,
+  avisarTicketSuspenso,
+  avisarTicketRetomado,
+  comentarioDeSuspensao,
+  erroAoRetomar,
+  erroAoSuspender,
+} from "../utils/eventosTicket.js";
 
 const include = {
   solicitante: { select: { id: true, nome: true } },
@@ -75,6 +84,34 @@ export const alterarStatus = asyncHandler(async (req, res) => {
     include,
   });
   avisarStatusAlterado(ticket, req.user);
+  res.json(ticket);
+});
+
+// Suspende o atendimento. O motivo é obrigatório (validado em suspenderSchema)
+// e fica registrado como comentário; status e comentário mudam juntos.
+export const suspender = asyncHandler(async (req, res) => {
+  const atual = await prisma.ticket.findUnique({ where: { id: Number(req.params.id) } });
+  if (!atual) return res.status(404).json({ erro: "Não encontrado" });
+  const erro = erroAoSuspender(atual);
+  if (erro) return res.status(409).json({ erro });
+
+  const { motivo } = req.body;
+  const [ticket] = await prisma.$transaction([
+    prisma.ticket.update({ where: { id: atual.id }, data: { status: "SUSPENSO" }, include }),
+    prisma.comentario.create({ data: { ticketId: atual.id, usuarioId: req.user.id, mensagem: comentarioDeSuspensao(motivo) } }),
+  ]);
+  avisarTicketSuspenso(ticket, req.user, motivo);
+  res.json(ticket);
+});
+
+export const retomar = asyncHandler(async (req, res) => {
+  const atual = await prisma.ticket.findUnique({ where: { id: Number(req.params.id) } });
+  if (!atual) return res.status(404).json({ erro: "Não encontrado" });
+  const erro = erroAoRetomar(atual);
+  if (erro) return res.status(409).json({ erro });
+
+  const ticket = await prisma.ticket.update({ where: { id: atual.id }, data: { status: "EM_ANDAMENTO" }, include });
+  avisarTicketRetomado(ticket, req.user);
   res.json(ticket);
 });
 

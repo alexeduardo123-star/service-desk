@@ -9,10 +9,9 @@ import ticketService from "../services/ticketService";
 import prioridadeService from "../services/prioridadeService";
 import categoriaService from "../services/categoriaService";
 import { PapelUsuario } from "../enum/PapelUsuario";
-import { StatusTicket } from "../enum/StatusTicket";
 import { STATUS_LABEL } from "../constants/labels";
 import { CORES_STATUS } from "../constants/cores";
-import { COLUNAS_KANBAN, agruparPorStatus, filtrarTickets, moverTicket } from "../utils/kanban";
+import { COLUNAS_KANBAN, acaoAoMover, agruparPorStatus, filtrarTickets, moverTicket } from "../utils/kanban";
 
 const FILTROS_VAZIOS = { busca: "", prioridadeId: "", categoriaId: "", apenasMeus: false, apenasAtrasados: false };
 
@@ -55,13 +54,20 @@ export default function Kanban() {
   async function mover(ticket, destino) {
     if (!podeGerenciar || ticket.status === destino) return;
 
-    const vaiAssumir = usuario.papel === PapelUsuario.TECNICO && destino === StatusTicket.EM_ANDAMENTO && !ticket.tecnico;
+    const acao = acaoAoMover(ticket, destino, usuario);
+    if (acao === "exigeMotivo") {
+      notificar(`Para suspender o chamado #${ticket.id}, abra o chamado e informe o motivo`, "erro");
+      return;
+    }
 
     // Atualização otimista: o cartão muda de coluna na hora; se a API recusar,
     // recarrega para voltar ao estado real.
     setTickets((atual) => moverTicket(atual, ticket.id, destino));
     try {
-      if (vaiAssumir) {
+      if (acao === "retomar") {
+        await ticketService.retomar(ticket.id);
+        notificar(`Chamado #${ticket.id} retomado`);
+      } else if (acao === "assumir") {
         // Técnico que puxa um chamado sem responsável para "Em andamento" o assume.
         await ticketService.atribuir(ticket.id, usuario.id);
         notificar(`Chamado #${ticket.id} atribuído a você`);
@@ -149,7 +155,7 @@ export default function Kanban() {
       {carregando ? (
         <p className="text-sm text-gray-500">Carregando…</p>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           {COLUNAS_KANBAN.map((status) => (
             <section
               key={status}
