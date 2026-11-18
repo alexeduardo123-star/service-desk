@@ -4,6 +4,7 @@ export const FILTROS_RELATORIO_VAZIOS = Object.freeze({
   status: "",
   categoriaId: "",
   prioridadeId: "",
+  departamentoId: "",
   tecnicoId: "",
   q: "",
 });

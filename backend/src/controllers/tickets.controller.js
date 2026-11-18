@@ -18,6 +18,7 @@ const include = {
   categoria: true,
   prioridade: true,
   equipamento: true,
+  departamento: true,
 };
 
 function podeVer(ticket, user) {
@@ -42,7 +43,7 @@ export const buscar = asyncHandler(async (req, res) => {
 });
 
 export const criar = asyncHandler(async (req, res) => {
-  const { titulo, descricao, categoriaId, prioridadeId, equipamentoId } = req.body;
+  const { titulo, descricao, categoriaId, prioridadeId, equipamentoId, departamentoId } = req.body;
   const ticket = await prisma.ticket.create({
     data: {
       titulo,
@@ -50,6 +51,7 @@ export const criar = asyncHandler(async (req, res) => {
       categoriaId,
       prioridadeId,
       equipamentoId: equipamentoId || null,
+      departamentoId: departamentoId || null,
       solicitanteId: req.user.id,
     },
     include,

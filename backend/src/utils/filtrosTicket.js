@@ -29,6 +29,10 @@ export function montarFiltroTickets(query = {}, user) {
   const prioridadeId = inteiroPositivo(query.prioridadeId);
   if (prioridadeId) where.prioridadeId = prioridadeId;
 
+  // Setor do chamado (model Departamento).
+  const departamentoId = inteiroPositivo(query.departamentoId);
+  if (departamentoId) where.departamentoId = departamentoId;
+
   // tecnicoId=me -> meus chamados | tecnicoId=none -> sem técnico | tecnicoId=<id>
   if (query.tecnicoId === "me") where.tecnicoId = user.id;
   else if (query.tecnicoId === "none") where.tecnicoId = null;

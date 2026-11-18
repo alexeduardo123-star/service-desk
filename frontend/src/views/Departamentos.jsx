@@ -12,5 +12,5 @@ const colunas = [
 ];
 
 export default function Departamentos() {
-  return <CrudTable titulo="Departamentos" colunas={colunas} campos={campos} service={departamentoService} />;
+  return <CrudTable titulo="Setores" colunas={colunas} campos={campos} service={departamentoService} />;
 }

@@ -12,6 +12,7 @@ import { useAuth } from "../auth/useAuth";
 import { useNotification } from "../store/useNotification";
 import relatorioService from "../services/relatorioService";
 import categoriaService from "../services/categoriaService";
+import departamentoService from "../services/departamentoService";
 import prioridadeService from "../services/prioridadeService";
 import usuarioService from "../services/usuarioService";
 import { PapelUsuario } from "../enum/PapelUsuario";
@@ -22,6 +23,7 @@ import { formatDate } from "../utils/formatDate";
 import { formatarHoras } from "../utils/charts";
 import { paginar } from "../utils/paginar";
 import { gerarCsv, baixarCsv } from "../utils/csv";
+import { opcoesSetor } from "../utils/setor";
 import { FILTROS_RELATORIO_VAZIOS, dataDiasAtras, filtrosDoSalvo, limparFiltros, resumirFiltros } from "../utils/relatorioFiltros";
 
 const LINHAS_POR_PAGINA = 10;
@@ -39,6 +41,7 @@ const COLUNAS_CSV = [
   { rotulo: "Status", valor: (l) => STATUS_LABEL[l.status] ?? l.status },
   { rotulo: "Categoria", valor: (l) => l.categoria },
   { rotulo: "Prioridade", valor: (l) => l.prioridade },
+  { rotulo: "Setor", valor: (l) => l.setor },
   { rotulo: "Solicitante", valor: (l) => l.solicitante },
   { rotulo: "Técnico", valor: (l) => l.tecnico },
   { rotulo: "Aberto em", valor: (l) => formatDate(l.criadoEm) },
@@ -62,6 +65,7 @@ export default function Relatorios() {
 
   const [categorias, setCategorias] = useState([]);
   const [prioridades, setPrioridades] = useState([]);
+  const [departamentos, setDepartamentos] = useState([]);
   const [tecnicos, setTecnicos] = useState([]);
 
   const [salvos, setSalvos] = useState([]);
@@ -107,6 +111,7 @@ export default function Relatorios() {
     });
     categoriaService.listar().then(setCategorias).catch(() => {});
     prioridadeService.listar().then(setPrioridades).catch(() => {});
+    departamentoService.listar().then(setDepartamentos).catch(() => {});
     if (isAdmin) {
       usuarioService
         .listar()
@@ -251,6 +256,13 @@ export default function Relatorios() {
             value={filtros.prioridadeId}
             onChange={(e) => alterarFiltro("prioridadeId", e.target.value)}
             options={prioridades.map((p) => ({ value: p.id, label: p.nome }))}
+          />
+          <SelectField
+            label="Setor"
+            placeholder="Todos"
+            value={filtros.departamentoId}
+            onChange={(e) => alterarFiltro("departamentoId", e.target.value)}
+            options={opcoesSetor(departamentos)}
           />
           <SelectField
             label="Técnico"
@@ -452,6 +464,7 @@ export default function Relatorios() {
                       <th className="py-2 pr-3">Status</th>
                       <th className="py-2 pr-3">Categoria</th>
                       <th className="py-2 pr-3">Prioridade</th>
+                      <th className="py-2 pr-3">Setor</th>
                       <th className="py-2 pr-3">Solicitante</th>
                       <th className="py-2 pr-3">Técnico</th>
                       <th className="py-2 pr-3">Aberto em</th>
@@ -472,6 +485,7 @@ export default function Relatorios() {
                         </td>
                         <td className="py-2 pr-3">{l.categoria ?? "-"}</td>
                         <td className="py-2 pr-3">{l.prioridade ?? "-"}</td>
+                        <td className="py-2 pr-3">{l.setor ?? "-"}</td>
                         <td className="py-2 pr-3">{l.solicitante ?? "-"}</td>
                         <td className="py-2 pr-3">{l.tecnico ?? "-"}</td>
                         <td className="whitespace-nowrap py-2 pr-3">{formatDate(l.criadoEm)}</td>

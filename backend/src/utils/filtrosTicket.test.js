@@ -23,6 +23,20 @@ describe("montarFiltroTickets", () => {
     expect(where).toEqual({ status: "FECHADO", categoriaId: 2, prioridadeId: 3 });
   });
 
+  it("filtra pelo setor do chamado", () => {
+    expect(montarFiltroTickets({ departamentoId: "4" }, ADMIN)).toEqual({ departamentoId: 4 });
+  });
+
+  it("ignora setor inválido", () => {
+    for (const departamentoId of ["abc", "0", "-2", "1.5", ""]) {
+      expect(montarFiltroTickets({ departamentoId }, ADMIN)).toEqual({});
+    }
+  });
+
+  it("solicitante filtra por setor sem sair dos próprios chamados", () => {
+    expect(montarFiltroTickets({ departamentoId: "4" }, SOLICITANTE)).toEqual({ solicitanteId: 9, departamentoId: 4 });
+  });
+
   it("aceita o status de espera do usuário", () => {
     expect(montarFiltroTickets({ status: "AGUARDANDO_USUARIO" }, ADMIN)).toEqual({ status: "AGUARDANDO_USUARIO" });
   });

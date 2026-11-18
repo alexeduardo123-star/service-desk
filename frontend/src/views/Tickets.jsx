@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import ticketService from "../services/ticketService";
+import departamentoService from "../services/departamentoService";
 import TicketCard from "../components/TicketCard";
 import SelectField from "../components/SelectField";
 import { StatusTicket } from "../enum/StatusTicket";
@@ -8,6 +9,7 @@ import { STATUS_LABEL } from "../constants/labels";
 import Paginacao from "../components/Paginacao";
 import { paginar } from "../utils/paginar";
 import { lerPreferencias } from "../utils/preferencias";
+import { opcoesSetor } from "../utils/setor";
 
 const ORDENS = [
   { value: "antigos", label: "Mais antigos primeiro" },
@@ -17,6 +19,8 @@ const ORDENS = [
 export default function Tickets() {
   const [tickets, setTickets] = useState([]);
   const [statusFiltro, setStatusFiltro] = useState("");
+  const [setorFiltro, setSetorFiltro] = useState("");
+  const [departamentos, setDepartamentos] = useState([]);
   // Padrão: quem está esperando há mais tempo aparece primeiro. A ordenação é
   // feita pelo backend (?ordem=), que também joga os fechados para o fim.
   const [ordem, setOrdem] = useState("antigos");
@@ -28,13 +32,22 @@ export default function Tickets() {
     // dentro do corpo do efeito (react-hooks/set-state-in-effect).
     Promise.resolve().then(() => setCarregando(true));
     ticketService
-      .listar({ ordem, ...(statusFiltro ? { status: statusFiltro } : {}) })
+      .listar({ ordem, ...(statusFiltro ? { status: statusFiltro } : {}), ...(setorFiltro ? { departamentoId: setorFiltro } : {}) })
       .then(setTickets)
       .finally(() => setCarregando(false));
-  }, [statusFiltro, ordem]);
+  }, [statusFiltro, setorFiltro, ordem]);
+
+  useEffect(() => {
+    departamentoService.listar().then(setDepartamentos).catch(() => {});
+  }, []);
 
   function mudarFiltro(status) {
     setStatusFiltro(status);
+    setPagina(1);
+  }
+
+  function mudarSetor(setor) {
+    setSetorFiltro(setor);
     setPagina(1);
   }
 
@@ -73,13 +86,23 @@ export default function Tickets() {
           ))}
         </div>
 
-        <SelectField
-          aria-label="Ordenar chamados"
-          className="py-1"
-          value={ordem}
-          onChange={(e) => mudarOrdem(e.target.value)}
-          options={ORDENS}
-        />
+        <div className="flex flex-wrap items-center gap-2">
+          <SelectField
+            aria-label="Filtrar por setor"
+            className="py-1"
+            placeholder="Todos os setores"
+            value={setorFiltro}
+            onChange={(e) => mudarSetor(e.target.value)}
+            options={opcoesSetor(departamentos)}
+          />
+          <SelectField
+            aria-label="Ordenar chamados"
+            className="py-1"
+            value={ordem}
+            onChange={(e) => mudarOrdem(e.target.value)}
+            options={ORDENS}
+          />
+        </div>
       </div>
 
       {carregando ? (

@@ -68,6 +68,7 @@ model Departamento {
 
   usuarios     Usuario[]
   equipamentos Equipamento[]
+  tickets      Ticket[]
 
   @@map("departamentos")
 }
@@ -125,6 +126,10 @@ model Ticket {
   prioridade    Prioridade   @relation(fields: [prioridadeId], references: [id])
   equipamentoId Int?
   equipamento   Equipamento? @relation(fields: [equipamentoId], references: [id])
+  // Setor do chamado (nas telas, "Departamento" aparece como "Setor"). Opcional
+  // no banco por causa dos chamados antigos; pela tela é sempre informado.
+  departamentoId Int?
+  departamento   Departamento? @relation(fields: [departamentoId], references: [id])
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
   closedAt      DateTime?

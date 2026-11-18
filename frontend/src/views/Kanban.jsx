@@ -8,12 +8,14 @@ import { useNotification } from "../store/useNotification";
 import ticketService from "../services/ticketService";
 import prioridadeService from "../services/prioridadeService";
 import categoriaService from "../services/categoriaService";
+import departamentoService from "../services/departamentoService";
 import { PapelUsuario } from "../enum/PapelUsuario";
 import { STATUS_LABEL } from "../constants/labels";
 import { CORES_STATUS } from "../constants/cores";
+import { opcoesSetor } from "../utils/setor";
 import { COLUNAS_KANBAN, acaoAoMover, agruparPorStatus, filtrarTickets, moverTicket } from "../utils/kanban";
 
-const FILTROS_VAZIOS = { busca: "", prioridadeId: "", categoriaId: "", apenasMeus: false, apenasAtrasados: false };
+const FILTROS_VAZIOS = { busca: "", prioridadeId: "", categoriaId: "", departamentoId: "", apenasMeus: false, apenasAtrasados: false };
 
 export default function Kanban() {
   const { usuario } = useAuth();
@@ -23,6 +25,7 @@ export default function Kanban() {
   const [tickets, setTickets] = useState([]);
   const [prioridades, setPrioridades] = useState([]);
   const [categorias, setCategorias] = useState([]);
+  const [departamentos, setDepartamentos] = useState([]);
   const [filtros, setFiltros] = useState(FILTROS_VAZIOS);
   const [carregando, setCarregando] = useState(true);
   const [arrastandoId, setArrastandoId] = useState(null);
@@ -44,6 +47,7 @@ export default function Kanban() {
     Promise.resolve().then(carregar);
     prioridadeService.listar().then(setPrioridades).catch(() => {});
     categoriaService.listar().then(setCategorias).catch(() => {});
+    departamentoService.listar().then(setDepartamentos).catch(() => {});
   }, [carregar]);
 
   const colunas = useMemo(
@@ -133,6 +137,15 @@ export default function Kanban() {
             value={filtros.categoriaId}
             onChange={(e) => alterarFiltro("categoriaId", e.target.value)}
             options={categorias.map((c) => ({ value: c.id, label: c.nome }))}
+          />
+        </div>
+        <div className="w-40">
+          <SelectField
+            label="Setor"
+            placeholder="Todos"
+            value={filtros.departamentoId}
+            onChange={(e) => alterarFiltro("departamentoId", e.target.value)}
+            options={opcoesSetor(departamentos)}
           />
         </div>
         {podeGerenciar && (

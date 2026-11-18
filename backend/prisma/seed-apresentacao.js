@@ -317,6 +317,7 @@ async function gerarUsuariosEChamados() {
         descricao: cenario.descricao,
         status,
         solicitanteId: solicitante.id,
+        departamentoId: solicitante.departamentoId,
         tecnicoId: tecnico?.id ?? null,
         categoriaId: categorias[cenario.cat].id,
         prioridadeId: prioridade.id,

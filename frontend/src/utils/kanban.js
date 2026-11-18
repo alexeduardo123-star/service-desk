@@ -47,12 +47,13 @@ export function moverTicket(tickets, id, novoStatus, agora = new Date()) {
   );
 }
 
-export function filtrarTickets(tickets, { busca = "", prioridadeId = "", categoriaId = "", apenasMeus = false, apenasAtrasados = false, usuarioId = null }, agora = new Date()) {
+export function filtrarTickets(tickets, { busca = "", prioridadeId = "", categoriaId = "", departamentoId = "", apenasMeus = false, apenasAtrasados = false, usuarioId = null }, agora = new Date()) {
   const termo = busca.trim().toLowerCase();
   return tickets.filter((t) => {
     if (termo && !`${t.titulo} ${t.descricao ?? ""} #${t.id}`.toLowerCase().includes(termo)) return false;
     if (prioridadeId && t.prioridade?.id !== Number(prioridadeId)) return false;
     if (categoriaId && t.categoria?.id !== Number(categoriaId)) return false;
+    if (departamentoId && t.departamento?.id !== Number(departamentoId)) return false;
     if (apenasMeus && t.tecnico?.id !== usuarioId) return false;
     if (apenasAtrasados && !slaVencido(t, agora)) return false;
     return true;

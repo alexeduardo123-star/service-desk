@@ -11,10 +11,11 @@ const include = {
   tecnico: { select: { id: true, nome: true } },
   categoria: true,
   prioridade: true,
+  departamento: true,
 };
 
 // Relatório de chamados: aplica os mesmos filtros da listagem (status,
-// categoria, prioridade, técnico, texto e período) e devolve o resumo de
+// categoria, prioridade, setor, técnico, texto e período) e devolve o resumo de
 // indicadores junto com as linhas detalhadas.
 export const chamados = asyncHandler(async (req, res) => {
   const where = montarFiltroTickets(req.query, req.user);

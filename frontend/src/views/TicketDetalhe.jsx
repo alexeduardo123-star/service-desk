@@ -110,6 +110,7 @@ export default function TicketDetalhe() {
         <div className="grid grid-cols-2 gap-2 text-xs text-gray-500">
           <span>Categoria: {ticket.categoria?.nome}</span>
           <span>Prioridade: {ticket.prioridade?.nome}</span>
+          <span>Setor: {ticket.departamento?.nome || "Não informado"}</span>
           <span>Solicitante: {ticket.solicitante?.nome}</span>
           <span>Técnico: {ticket.tecnico?.nome || "Não atribuído"}</span>
           <span>Aberto em: {formatDate(ticket.createdAt)}</span>

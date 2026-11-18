@@ -70,7 +70,8 @@ CREATE TABLE "tickets" (
     "equipamentoId"  INTEGER REFERENCES "equipamentos" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
     "createdAt"      TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt"      TIMESTAMP(3) NOT NULL,
-    "closedAt"       TIMESTAMP(3)
+    "closedAt"       TIMESTAMP(3),
+    "departamentoId" INTEGER REFERENCES "departamentos" ("id") ON DELETE SET NULL ON UPDATE CASCADE
 );
 
 CREATE TABLE "comentarios" (

@@ -18,6 +18,7 @@ export function montarLinhas(tickets, agora = new Date()) {
       status: t.status,
       categoria: t.categoria?.nome ?? null,
       prioridade: t.prioridade?.nome ?? null,
+      setor: t.departamento?.nome ?? null,
       solicitante: t.solicitante?.nome ?? null,
       tecnico: t.tecnico?.nome ?? null,
       criadoEm: t.createdAt,

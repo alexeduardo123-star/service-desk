@@ -10,6 +10,7 @@ export const filtrosRelatorioSchema = z.object({
   status: texto,
   categoriaId: texto,
   prioridadeId: texto,
+  departamentoId: texto,
   tecnicoId: texto,
   q: texto,
 });

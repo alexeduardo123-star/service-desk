@@ -19,7 +19,7 @@ export default function Equipamentos() {
     { name: "numeroSerie", label: "Número de série", required: true },
     {
       name: "departamentoId",
-      label: "Departamento",
+      label: "Setor",
       type: "select",
       numeric: true,
       options: departamentos.map((d) => ({ value: d.id, label: d.nome })),

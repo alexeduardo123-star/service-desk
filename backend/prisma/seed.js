@@ -88,6 +88,7 @@ async function main() {
         categoriaId: categoriaHardware.id,
         prioridadeId: prioridadeMedia.id,
         equipamentoId: equipamento.id,
+        departamentoId: solicitante.departamentoId,
       },
     });
   }
@@ -172,6 +173,7 @@ async function main() {
           descricao: `${titulo}. Chamado de demonstração gerado pelo seed.`,
           status,
           solicitanteId: solicitanteDoChamado.id,
+          departamentoId: solicitanteDoChamado.departamentoId,
           tecnicoId: tecnicoDoChamado?.id ?? null,
           categoriaId: categoria.id,
           prioridadeId: prioridade.id,
@@ -255,6 +257,15 @@ async function main() {
       },
     });
   }
+
+  // Chamados criados antes do campo de setor existir (seeds anteriores) ficam
+  // com o setor de quem abriu. Só preenche o que está vazio: rodar de novo não
+  // muda nada e não sobrescreve setor escolhido na tela.
+  const semSetor = await prisma.$executeRaw`
+    UPDATE "tickets" AS t SET "departamentoId" = u."departamentoId"
+    FROM "usuarios" AS u
+    WHERE t."solicitanteId" = u."id" AND t."departamentoId" IS NULL AND u."departamentoId" IS NOT NULL`;
+  if (semSetor > 0) console.log(`Setor preenchido em ${semSetor} chamado(s) que estavam sem setor.`);
 
   // Ids foram fixados manualmente acima (upsert por id) para dados de
   // referência estáveis; realinha as sequences do Postgres para que os

@@ -147,6 +147,22 @@ describe("TicketDetalhe: retomar", () => {
   });
 });
 
+describe("TicketDetalhe: setor", () => {
+  it("mostra o setor do chamado", async () => {
+    ticketService.buscar.mockResolvedValue(chamado({ departamento: { id: 2, nome: "Financeiro" } }));
+    renderizar();
+
+    expect(await screen.findByText("Setor: Financeiro")).toBeInTheDocument();
+  });
+
+  it("chamado antigo sem setor mostra 'Não informado'", async () => {
+    ticketService.buscar.mockResolvedValue(chamado({ departamento: null }));
+    renderizar();
+
+    expect(await screen.findByText("Setor: Não informado")).toBeInTheDocument();
+  });
+});
+
 describe("TicketDetalhe: solicitante", () => {
   it("não vê as ações de suspender nem retomar", async () => {
     usuarioLogado = SOLICITANTE;

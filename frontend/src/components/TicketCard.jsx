@@ -17,6 +17,7 @@ export default function TicketCard({ ticket }) {
       <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
         <span>Categoria: {ticket.categoria?.nome}</span>
         <span>Prioridade: {ticket.prioridade?.nome}</span>
+        {ticket.departamento && <span>Setor: {ticket.departamento.nome}</span>}
         <span>Solicitante: {ticket.solicitante?.nome}</span>
         {ticket.tecnico && <span>Técnico: {ticket.tecnico.nome}</span>}
         <span>{formatDate(ticket.createdAt)}</span>

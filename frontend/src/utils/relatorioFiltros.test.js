@@ -6,6 +6,12 @@ describe("limparFiltros", () => {
     expect(limparFiltros({ ...FILTROS_RELATORIO_VAZIOS, status: "FECHADO", categoriaId: 2 })).toEqual({ status: "FECHADO", categoriaId: "2" });
   });
 
+  it("inclui o filtro de setor", () => {
+    expect(FILTROS_RELATORIO_VAZIOS).toHaveProperty("departamentoId", "");
+    expect(limparFiltros({ ...FILTROS_RELATORIO_VAZIOS, departamentoId: 4 })).toEqual({ departamentoId: "4" });
+    expect(filtrosDoSalvo({ departamentoId: "4" }).departamentoId).toBe("4");
+  });
+
   it("devolve objeto vazio quando nada foi preenchido", () => {
     expect(limparFiltros(FILTROS_RELATORIO_VAZIOS)).toEqual({});
   });

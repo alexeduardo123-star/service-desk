@@ -53,7 +53,7 @@ export default function AppLayout() {
             <>
               <p className="mt-4 mb-1 px-3 text-xs font-semibold uppercase text-gray-400">Administração</p>
               <NavLink to="/admin/usuarios" className={linkClasse}>Usuários</NavLink>
-              <NavLink to="/admin/departamentos" className={linkClasse}>Departamentos</NavLink>
+              <NavLink to="/admin/departamentos" className={linkClasse}>Setores</NavLink>
               <NavLink to="/admin/categorias" className={linkClasse}>Categorias</NavLink>
               <NavLink to="/admin/prioridades" className={linkClasse}>Prioridades</NavLink>
               <NavLink to="/admin/servicos" className={linkClasse}>Serviços</NavLink>

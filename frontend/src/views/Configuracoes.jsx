@@ -208,7 +208,7 @@ export default function Configuracoes() {
           <Secao titulo="Informações da conta" descricao="Somente um administrador pode alterar estes dados.">
             <dl className="grid gap-3 sm:grid-cols-3">
               <InfoLinha rotulo="Perfil de acesso" valor={PAPEL_LABEL[perfil.papel]} />
-              <InfoLinha rotulo="Departamento" valor={perfil.departamento?.nome} />
+              <InfoLinha rotulo="Setor" valor={perfil.departamento?.nome} />
               <InfoLinha rotulo="Membro desde" valor={formatDate(perfil.createdAt)} />
             </dl>
           </Secao>

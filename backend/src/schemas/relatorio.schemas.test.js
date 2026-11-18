@@ -17,6 +17,11 @@ describe("relatorioSalvoSchema", () => {
     expect(req.body.nome).toBe("Fechados do mês");
   });
 
+  it("guarda o filtro de setor", () => {
+    const { req } = run(relatorioSalvoSchema, { nome: "Chamados do Financeiro", filtros: { departamentoId: "2" } });
+    expect(req.body.filtros).toEqual({ departamentoId: "2" });
+  });
+
   it("usa filtros vazios quando não vêm", () => {
     const { req } = run(relatorioSalvoSchema, { nome: "Sem filtros" });
     expect(req.body.filtros).toEqual({});

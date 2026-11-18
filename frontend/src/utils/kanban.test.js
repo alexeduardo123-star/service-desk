@@ -80,6 +80,16 @@ describe("filtrarTickets", () => {
     expect(filtrarTickets(TICKETS, { categoriaId: "3" }, AGORA).map((t) => t.id)).toEqual([2, 4]);
   });
 
+  it("filtra pelo setor do chamado", () => {
+    const comSetor = [
+      { ...TICKETS[0], departamento: { id: 1, nome: "TI" } },
+      { ...TICKETS[1], departamento: { id: 2, nome: "Financeiro" } },
+      { ...TICKETS[2], departamento: null },
+    ];
+    expect(filtrarTickets(comSetor, { departamentoId: "2" }, AGORA).map((t) => t.id)).toEqual([2]);
+    expect(filtrarTickets(comSetor, { departamentoId: "" }, AGORA)).toHaveLength(3);
+  });
+
   it("filtra meus chamados e atrasados", () => {
     expect(filtrarTickets(TICKETS, { apenasMeus: true, usuarioId: 5 }, AGORA).map((t) => t.id)).toEqual([2, 3, 4, 5]);
     expect(filtrarTickets(TICKETS, { apenasAtrasados: true }, AGORA).map((t) => t.id)).toEqual([1]);

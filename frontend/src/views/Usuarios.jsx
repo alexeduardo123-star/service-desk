@@ -25,7 +25,7 @@ export default function Usuarios() {
     },
     {
       name: "departamentoId",
-      label: "Departamento",
+      label: "Setor",
       type: "select",
       numeric: true,
       options: departamentos.map((d) => ({ value: d.id, label: d.nome })),

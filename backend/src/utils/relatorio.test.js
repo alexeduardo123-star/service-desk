@@ -13,6 +13,18 @@ describe("montarLinhas", () => {
     expect(linha).toMatchObject({ id: 1, categoria: "Rede", prioridade: "Alta", solicitante: "Ana", tecnico: "Téc", fechadoEm: null, horasResolucao: null });
   });
 
+  it("traz o setor do chamado, ou null quando não tem", () => {
+    const [comSetor, semSetor] = montarLinhas(
+      [
+        { ...base, id: 1, status: "ABERTO", createdAt: h(1), closedAt: null, departamento: { id: 3, nome: "Financeiro" } },
+        { ...base, id: 2, status: "ABERTO", createdAt: h(1), closedAt: null, departamento: null },
+      ],
+      AGORA
+    );
+    expect(comSetor.setor).toBe("Financeiro");
+    expect(semSetor.setor).toBeNull();
+  });
+
   it("marca chamado aberto fora do prazo como VENCIDO", () => {
     const [linha] = montarLinhas([{ ...base, id: 1, status: "ABERTO", createdAt: h(20), closedAt: null }], AGORA);
     expect(linha.slaStatus).toBe("VENCIDO");

@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 vi.mock("../config/prisma.js", () => ({
   default: {
-    ticket: { findUnique: vi.fn(), update: vi.fn() },
+    ticket: { findUnique: vi.fn(), update: vi.fn(), create: vi.fn() },
     comentario: { create: vi.fn() },
     $transaction: vi.fn(),
   },
@@ -13,11 +13,12 @@ vi.mock("../utils/eventosTicket.js", async (original) => ({
   ...(await original()),
   avisarTicketSuspenso: vi.fn(),
   avisarTicketRetomado: vi.fn(),
+  avisarTicketCriado: vi.fn(),
 }));
 
 const prisma = (await import("../config/prisma.js")).default;
 const eventos = await import("../utils/eventosTicket.js");
-const { suspender, retomar } = await import("./tickets.controller.js");
+const { criar, suspender, retomar } = await import("./tickets.controller.js");
 
 const TECNICO = { id: 20, nome: "Téc", papel: "TECNICO" };
 const TICKET = { id: 7, titulo: "VPN", status: "EM_ANDAMENTO", solicitanteId: 10, tecnicoId: 20 };
@@ -114,5 +115,30 @@ describe("tickets.controller: retomar", () => {
     expect(res.status).toHaveBeenCalledWith(409);
     expect(prisma.ticket.update).not.toHaveBeenCalled();
     expect(eventos.avisarTicketRetomado).not.toHaveBeenCalled();
+  });
+});
+
+describe("tickets.controller: criar com setor", () => {
+  const NOVO = { titulo: "Impressora", descricao: "Não imprime", categoriaId: 1, prioridadeId: 2 };
+
+  beforeEach(() => {
+    prisma.ticket.create.mockImplementation(({ data }) => Promise.resolve({ id: 9, ...data }));
+  });
+
+  it("grava o setor escolhido e devolve o chamado com o setor", async () => {
+    const res = mockRes();
+
+    await criar({ body: { ...NOVO, departamentoId: 4 }, user: TECNICO }, res, throwingNext);
+
+    const { data, include } = prisma.ticket.create.mock.calls[0][0];
+    expect(data).toMatchObject({ departamentoId: 4, solicitanteId: 20 });
+    expect(include.departamento).toBe(true);
+    expect(res.status).toHaveBeenCalledWith(201);
+  });
+
+  it("sem setor informado grava null (chamados abertos fora da tela)", async () => {
+    await criar({ body: NOVO, user: TECNICO }, mockRes(), throwingNext);
+
+    expect(prisma.ticket.create.mock.calls[0][0].data.departamentoId).toBeNull();
   });
 });
