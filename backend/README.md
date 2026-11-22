@@ -166,12 +166,18 @@ sem duplicar a camada de acesso a dados da aplicação.
 
 - `POST /auth/login` e `POST /auth/registro` (público) retornam um token JWT
   contendo `{ id, nome, papel }`. Qualquer pessoa pode se cadastrar por
-  `/auth/registro` (perfil `SOLICITANTE` por padrão).
+  `/auth/registro` (perfil `SOLICITANTE` por padrão). A resposta também inclui
+  a lista de permissões efetivas do perfil para o front-end.
+- Os perfis disponíveis são `ADMIN`, `GESTOR`, `TECNICO` e `SOLICITANTE`.
 - O front envia esse token em `Authorization: Bearer <token>` (interceptor do
   axios em `../frontend/src/services/api.js`).
-- `src/middlewares/auth.js` expõe `authMiddleware` (valida o token) e
-  `requireRole(...papeis)` (autorização por perfil: `ADMIN`, `TECNICO`,
-  `SOLICITANTE`), aplicados nas rotas de cada recurso.
+- `src/middlewares/auth.js` expõe `authMiddleware` (valida o token e atualiza o
+  perfil com o valor atual do banco) e `requirePermission(...chaves)` (autoriza
+  a ação conforme as permissões associadas ao perfil). O Administrador mantém
+  acesso completo.
+- `GET /permissoes` lista os recursos e as permissões de cada perfil;
+  `PUT /permissoes/:papel` atualiza as permissões de um perfil. Ambos exigem
+  `PERFIS_GERENCIAR`, disponível ao Administrador por padrão.
 
 ### Recuperação de senha (esqueci minha senha)
 

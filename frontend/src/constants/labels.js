@@ -19,6 +19,7 @@ export const STATUS_COR = {
 
 export const PAPEL_LABEL = {
   [PapelUsuario.ADMIN]: "Administrador",
+  [PapelUsuario.GESTOR]: "Gestor",
   [PapelUsuario.TECNICO]: "Técnico",
   [PapelUsuario.SOLICITANTE]: "Solicitante",
 };

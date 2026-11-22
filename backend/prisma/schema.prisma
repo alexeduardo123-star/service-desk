@@ -9,6 +9,7 @@ datasource db {
 
 enum PapelUsuario {
   ADMIN
+  GESTOR
   TECNICO
   SOLICITANTE
 }
@@ -59,6 +60,28 @@ model Usuario {
   relatoriosSalvos   RelatorioSalvo[]
 
   @@map("usuarios")
+}
+
+model Permissao {
+  id          Int                 @id @default(autoincrement())
+  chave       String              @unique
+  nome        String
+  grupo       String
+  descricao   String?
+  perfis      PerfilPermissao[]
+
+  @@map("permissoes")
+}
+
+model PerfilPermissao {
+  id           Int          @id @default(autoincrement())
+  papel        PapelUsuario
+  permissaoId  Int
+  permissao    Permissao    @relation(fields: [permissaoId], references: [id], onDelete: Cascade)
+
+  @@unique([papel, permissaoId])
+  @@index([papel])
+  @@map("perfis_permissoes")
 }
 
 model Departamento {

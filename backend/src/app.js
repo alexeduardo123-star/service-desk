@@ -18,6 +18,7 @@ import configuracoesRoutes from "./routes/configuracoes.routes.js";
 import notificacoesRoutes from "./routes/notificacoes.routes.js";
 import dashboardRoutes from "./routes/dashboard.routes.js";
 import relatoriosRoutes from "./routes/relatorios.routes.js";
+import permissoesRoutes from "./routes/permissoes.routes.js";
 import { errorHandler } from "./middlewares/errorHandler.js";
 
 const app = express();
@@ -53,6 +54,7 @@ app.use("/configuracoes", configuracoesRoutes);
 app.use("/notificacoes", notificacoesRoutes);
 app.use("/dashboard", dashboardRoutes);
 app.use("/relatorios", relatoriosRoutes);
+app.use("/permissoes", permissoesRoutes);
 
 app.use(errorHandler);
 

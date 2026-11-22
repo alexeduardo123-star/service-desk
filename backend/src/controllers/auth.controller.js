@@ -23,8 +23,20 @@ function gerarToken(usuario) {
   );
 }
 
-function usuarioPublico(usuario) {
-  return { id: usuario.id, nome: usuario.nome, email: usuario.email, papel: usuario.papel };
+async function usuarioPublico(usuario) {
+  const registros = prisma.perfilPermissao?.findMany
+    ? await prisma.perfilPermissao.findMany({
+        where: { papel: usuario.papel },
+        select: { permissao: { select: { chave: true } } },
+      })
+    : [];
+  return {
+    id: usuario.id,
+    nome: usuario.nome,
+    email: usuario.email,
+    papel: usuario.papel,
+    permissoes: usuario.papel === "ADMIN" ? ["*"] : registros.map((item) => item.permissao.chave),
+  };
 }
 
 async function enviarCodigoVerificacao(usuario) {
@@ -90,7 +102,7 @@ export const verificarEmail = asyncHandler(async (req, res) => {
   });
 
   const token = gerarToken(usuarioVerificado);
-  res.json({ token, usuario: usuarioPublico(usuarioVerificado) });
+  res.json({ token, usuario: await usuarioPublico(usuarioVerificado) });
 });
 
 export const reenviarVerificacao = asyncHandler(async (req, res) => {
@@ -130,7 +142,7 @@ export const login = asyncHandler(async (req, res) => {
   }
 
   const token = gerarToken(usuario);
-  res.json({ token, usuario: usuarioPublico(usuario) });
+  res.json({ token, usuario: await usuarioPublico(usuario) });
 });
 
 export const esqueciSenha = asyncHandler(async (req, res) => {

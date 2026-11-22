@@ -22,7 +22,7 @@ export default function TicketDetalhe() {
   const [suspendendo, setSuspendendo] = useState(false);
   const [motivo, setMotivo] = useState("");
   const [enviando, setEnviando] = useState(false);
-  const podeGerenciar = usuario.papel === PapelUsuario.ADMIN || usuario.papel === PapelUsuario.TECNICO;
+  const podeGerenciar = usuario.papel === PapelUsuario.ADMIN || usuario.permissoes?.includes("TICKETS_GERENCIAR");
 
   async function carregar() {
     setTicket(await ticketService.buscar(id));
@@ -141,11 +141,11 @@ export default function TicketDetalhe() {
             <Botao variante="secundario" onClick={() => setSuspendendo(true)}>Suspender</Botao>
           )}
 
-          {usuario.papel === PapelUsuario.TECNICO && !ticket.tecnico && (
+          {podeGerenciar && !ticket.tecnico && (
             <Botao onClick={() => atribuir(usuario.id)}>Atribuir a mim</Botao>
           )}
 
-          {usuario.papel === PapelUsuario.ADMIN && (
+          {podeGerenciar && usuario.papel === PapelUsuario.ADMIN && (
             <label className="flex items-center gap-2 text-sm text-gray-700">
               Atribuir a:
               <select

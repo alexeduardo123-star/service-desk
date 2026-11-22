@@ -1,6 +1,6 @@
 import { Router } from "express";
 import * as notificacoes from "../controllers/notificacoes.controller.js";
-import { authMiddleware, requireRole } from "../middlewares/auth.js";
+import { authMiddleware, requirePermission } from "../middlewares/auth.js";
 import { validate } from "../middlewares/validate.js";
 import { criarNotificacaoSchema, marcarLidaSchema } from "../schemas/notificacao.schemas.js";
 
@@ -15,7 +15,7 @@ router.delete("/lidas", notificacoes.excluirLidas);
 
 router.get("/", notificacoes.listar);
 router.get("/:id", notificacoes.buscar);
-router.post("/", requireRole("ADMIN"), validate(criarNotificacaoSchema), notificacoes.criar);
+router.post("/", requirePermission("NOTIFICACOES_ENVIAR"), validate(criarNotificacaoSchema), notificacoes.criar);
 router.patch("/:id/lida", validate(marcarLidaSchema), notificacoes.marcarLida);
 router.delete("/:id", notificacoes.excluir);
 

@@ -22,7 +22,7 @@ const OPCOES_TIPO = Object.entries(TIPO_NOTIFICACAO_LABEL).map(([value, label]) 
 export default function Notificacoes() {
   const { usuario } = useAuth();
   const { notificar } = useNotification();
-  const isAdmin = usuario.papel === PapelUsuario.ADMIN;
+  const isAdmin = usuario.papel === PapelUsuario.ADMIN || usuario.permissoes?.includes("NOTIFICACOES_ENVIAR");
 
   const [notificacoes, setNotificacoes] = useState([]);
   const [apenasNaoLidas, setApenasNaoLidas] = useState(false);

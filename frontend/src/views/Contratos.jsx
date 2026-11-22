@@ -134,9 +134,9 @@ export default function Contratos() {
 
   const podeEscrever =
     usuario?.papel === PapelUsuario.ADMIN ||
-    usuario?.papel === PapelUsuario.TECNICO;
+    usuario?.permissoes?.includes("CONTRATOS_ACESSAR");
 
-  const podeExcluir = usuario?.papel === PapelUsuario.ADMIN;
+  const podeExcluir = usuario?.papel === PapelUsuario.ADMIN || usuario?.permissoes?.includes("CONTRATOS_EXCLUIR");
 
   return (
     <div>

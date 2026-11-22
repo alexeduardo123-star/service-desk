@@ -23,11 +23,15 @@ import Configuracoes from "../views/Configuracoes";
 import Notificacoes from "../views/Notificacoes";
 import Kanban from "../views/Kanban";
 import Relatorios from "../views/Relatorios";
+import PerfisPermissoes from "../views/PerfisPermissoes";
 
-function RotaPrivada({ children, roles }) {
+function RotaPrivada({ children, permission }) {
   const { logado, usuario } = useAuth();
   if (!logado) return <Navigate to="/" />;
-  if (roles && !roles.includes(usuario.papel)) return <Navigate to="/home" />;
+  const permissoes = usuario?.permissoes || [];
+  if (permission && usuario?.papel !== "ADMIN" && !permissoes.includes(permission) && !permissoes.includes("*")) {
+    return <Navigate to="/home" />;
+  }
   return children;
 }
 
@@ -57,7 +61,7 @@ export default function AppRoutes() {
         <Route
           path="/relatorios"
           element={
-            <RotaPrivada roles={["ADMIN", "TECNICO"]}>
+            <RotaPrivada permission="RELATORIOS_ACESSAR">
               <Relatorios />
             </RotaPrivada>
           }
@@ -65,7 +69,7 @@ export default function AppRoutes() {
         <Route
           path="/admin/equipamentos"
           element={
-            <RotaPrivada roles={["ADMIN", "TECNICO"]}>
+            <RotaPrivada permission="EQUIPAMENTOS_ACESSAR">
               <Equipamentos />
             </RotaPrivada>
           }
@@ -73,7 +77,7 @@ export default function AppRoutes() {
         <Route
           path="/admin/contratos"
           element={
-            <RotaPrivada roles={["ADMIN", "TECNICO"]}>
+            <RotaPrivada permission="CONTRATOS_ACESSAR">
               <Contratos />
             </RotaPrivada>
           }
@@ -81,7 +85,7 @@ export default function AppRoutes() {
         <Route
           path="/admin/usuarios"
           element={
-            <RotaPrivada roles={["ADMIN"]}>
+            <RotaPrivada permission="USUARIOS_GERENCIAR">
               <Usuarios />
             </RotaPrivada>
           }
@@ -89,7 +93,7 @@ export default function AppRoutes() {
         <Route
           path="/admin/departamentos"
           element={
-            <RotaPrivada roles={["ADMIN"]}>
+            <RotaPrivada permission="DEPARTAMENTOS_GERENCIAR">
               <Departamentos />
             </RotaPrivada>
           }
@@ -97,7 +101,7 @@ export default function AppRoutes() {
         <Route
           path="/admin/categorias"
           element={
-            <RotaPrivada roles={["ADMIN"]}>
+            <RotaPrivada permission="CATEGORIAS_GERENCIAR">
               <Categorias />
             </RotaPrivada>
           }
@@ -105,7 +109,7 @@ export default function AppRoutes() {
         <Route
           path="/admin/prioridades"
           element={
-            <RotaPrivada roles={["ADMIN"]}>
+            <RotaPrivada permission="PRIORIDADES_GERENCIAR">
               <Prioridades />
             </RotaPrivada>
           }
@@ -113,7 +117,7 @@ export default function AppRoutes() {
         <Route
           path="/admin/servicos"
           element={
-            <RotaPrivada roles={["ADMIN"]}>
+            <RotaPrivada permission="SERVICOS_GERENCIAR">
               <Servicos />
             </RotaPrivada>
           }
@@ -121,15 +125,23 @@ export default function AppRoutes() {
         <Route
           path="/admin/assuntos"
           element={
-            <RotaPrivada roles={["ADMIN"]}>
+            <RotaPrivada permission="ASSUNTOS_GERENCIAR">
               <Assuntos />
+            </RotaPrivada>
+          }
+        />
+        <Route
+          path="/admin/permissoes"
+          element={
+            <RotaPrivada permission="PERFIS_GERENCIAR">
+              <PerfisPermissoes />
             </RotaPrivada>
           }
         />
         <Route
           path="/admin/formularios"
           element={
-            <RotaPrivada roles={["ADMIN"]}>
+            <RotaPrivada permission="FORMULARIOS_GERENCIAR">
               <Formularios />
             </RotaPrivada>
           }

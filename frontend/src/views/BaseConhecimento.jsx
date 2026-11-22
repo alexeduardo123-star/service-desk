@@ -4,7 +4,6 @@ import categoriaService from "../services/categoriaService";
 import Botao from "../components/Botao";
 import InputField from "../components/InputField";
 import { useAuth } from "../auth/useAuth";
-import { PapelUsuario } from "../enum/PapelUsuario";
 import { formatDate } from "../utils/formatDate";
 import { useNotification } from "../store/useNotification";
 
@@ -15,7 +14,7 @@ export default function BaseConhecimento() {
   const [carregando, setCarregando] = useState(true);
   const { usuario } = useAuth();
   const { notificar } = useNotification();
-  const podeEscrever = usuario.papel === PapelUsuario.ADMIN || usuario.papel === PapelUsuario.TECNICO;
+  const podeEscrever = usuario.papel === "ADMIN" || usuario.permissoes?.includes("BASE_CONHECIMENTO_GERENCIAR");
 
   async function carregar() {
     setCarregando(true);

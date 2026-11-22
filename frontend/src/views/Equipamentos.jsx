@@ -32,7 +32,7 @@ export default function Equipamentos() {
     { key: "numeroSerie", label: "Nº de série" },
   ];
 
-  const podeEscrever = usuario.papel === PapelUsuario.ADMIN || usuario.papel === PapelUsuario.TECNICO;
+  const podeEscrever = usuario.papel === PapelUsuario.ADMIN || usuario.permissoes?.includes("EQUIPAMENTOS_ACESSAR");
 
   return (
     <CrudTable
@@ -41,6 +41,7 @@ export default function Equipamentos() {
       campos={campos}
       service={equipamentoService}
       podeEscrever={podeEscrever}
+      podeExcluir={usuario.papel === PapelUsuario.ADMIN || usuario.permissoes?.includes("EQUIPAMENTOS_EXCLUIR")}
     />
   );
 }
