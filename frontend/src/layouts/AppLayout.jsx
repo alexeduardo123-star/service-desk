@@ -1,10 +1,12 @@
 import { useEffect } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/useAuth";
-import { PapelUsuario } from "../enum/PapelUsuario";
 import { PAPEL_LABEL } from "../constants/labels";
+import { NOME_APP } from "../constants/marca";
 import SinoNotificacoes from "../components/SinoNotificacoes";
 import configuracaoService from "../services/configuracaoService";
+import permissaoService from "../services/permissaoService";
+import { temPermissao, temAlgumaPermissao } from "../utils/permissoes";
 import { salvarPreferencias } from "../utils/preferencias";
 
 const linkClasse = ({ isActive }) =>
@@ -13,10 +15,14 @@ const linkClasse = ({ isActive }) =>
   }`;
 
 export default function AppLayout() {
-  const { usuario, logout } = useAuth();
+  const { usuario, logout, atualizarUsuario } = useAuth();
   const navigate = useNavigate();
-  const isAdmin = usuario?.papel === PapelUsuario.ADMIN;
-  const isTecnicoOuAdmin = isAdmin || usuario?.papel === PapelUsuario.TECNICO;
+  const podeVer = (chave) => temPermissao(usuario, chave);
+  const mostraCadastros = temAlgumaPermissao(usuario, [
+    "usuarios.gerenciar",
+    "cadastros.gerenciar",
+    "permissoes.gerenciar",
+  ]);
 
   // Carrega as preferências de exibição (fuso, itens por página) do backend
   // e guarda em cache para o restante do app usar.
@@ -25,6 +31,13 @@ export default function AppLayout() {
       .obter()
       .then(salvarPreferencias)
       .catch(() => {});
+    // Pega as permissões atuais do perfil: o administrador pode ter mudado algo
+    // desde o login.
+    permissaoService
+      .minhas()
+      .then(({ permissoes }) => atualizarUsuario({ permissoes }))
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function handleLogout() {
@@ -35,30 +48,35 @@ export default function AppLayout() {
   return (
     <div className="flex min-h-screen">
       <aside className="w-56 shrink-0 border-r border-gray-200 bg-white p-4 print:hidden">
-        <h2 className="mb-6 text-lg font-bold text-blue-600">Service Desk</h2>
+        <h2 className="mb-6 text-lg font-bold text-blue-600">{NOME_APP}</h2>
         <nav className="flex flex-col gap-1">
           <NavLink to="/home" className={linkClasse}>Dashboard</NavLink>
           <NavLink to="/tickets" className={linkClasse}>Chamados</NavLink>
           <NavLink to="/kanban" className={linkClasse}>Kanban</NavLink>
           <NavLink to="/kb" className={linkClasse}>Base de Conhecimento</NavLink>
           <NavLink to="/notificacoes" className={linkClasse}>Notificações</NavLink>
-          {isTecnicoOuAdmin && (
-            <>
-              <NavLink to="/relatorios" className={linkClasse}>Relatórios</NavLink>
-              <NavLink to="/admin/equipamentos" className={linkClasse}>Equipamentos</NavLink>
-              <NavLink to="/admin/contratos" className={linkClasse}>Contratos</NavLink>
-            </>
+          {podeVer("relatorios.ver") && <NavLink to="/relatorios" className={linkClasse}>Relatórios</NavLink>}
+          {podeVer("equipamentos.gerenciar") && (
+            <NavLink to="/admin/equipamentos" className={linkClasse}>Equipamentos</NavLink>
           )}
-          {isAdmin && (
+          {podeVer("contratos.ver") && <NavLink to="/admin/contratos" className={linkClasse}>Contratos</NavLink>}
+          {mostraCadastros && (
             <>
               <p className="mt-4 mb-1 px-3 text-xs font-semibold uppercase text-gray-400">Administração</p>
-              <NavLink to="/admin/usuarios" className={linkClasse}>Usuários</NavLink>
-              <NavLink to="/admin/departamentos" className={linkClasse}>Setores</NavLink>
-              <NavLink to="/admin/categorias" className={linkClasse}>Categorias</NavLink>
-              <NavLink to="/admin/prioridades" className={linkClasse}>Prioridades</NavLink>
-              <NavLink to="/admin/servicos" className={linkClasse}>Serviços</NavLink>
-              <NavLink to="/admin/assuntos" className={linkClasse}>Assuntos</NavLink>
-              <NavLink to="/admin/formularios" className={linkClasse}>Formulários</NavLink>
+              {podeVer("usuarios.gerenciar") && <NavLink to="/admin/usuarios" className={linkClasse}>Usuários</NavLink>}
+              {podeVer("permissoes.gerenciar") && (
+                <NavLink to="/admin/perfis" className={linkClasse}>Perfis e permissões</NavLink>
+              )}
+              {podeVer("cadastros.gerenciar") && (
+                <>
+                  <NavLink to="/admin/departamentos" className={linkClasse}>Setores</NavLink>
+                  <NavLink to="/admin/categorias" className={linkClasse}>Categorias</NavLink>
+                  <NavLink to="/admin/prioridades" className={linkClasse}>Prioridades</NavLink>
+                  <NavLink to="/admin/servicos" className={linkClasse}>Serviços</NavLink>
+                  <NavLink to="/admin/assuntos" className={linkClasse}>Assuntos</NavLink>
+                  <NavLink to="/admin/formularios" className={linkClasse}>Formulários</NavLink>
+                </>
+              )}
             </>
           )}
         </nav>
@@ -85,7 +103,7 @@ export default function AppLayout() {
         </main>
 
         <footer className="border-t border-gray-200 px-6 py-3 text-center text-xs text-gray-400 print:hidden">
-          Service Desk — Projeto acadêmico
+          {NOME_APP} — Projeto acadêmico
         </footer>
       </div>
     </div>

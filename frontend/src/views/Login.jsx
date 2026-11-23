@@ -3,6 +3,7 @@ import { useLocation, useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../auth/useAuth";
 import Botao from "../components/Botao";
 import InputField from "../components/InputField";
+import { NOME_APP } from "../constants/marca";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -35,7 +36,7 @@ export default function Login() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-100">
       <form onSubmit={handleSubmit} className="w-full max-w-sm rounded-lg bg-white p-8 shadow-md">
-        <h1 className="mb-1 text-xl font-bold text-gray-900">Service Desk</h1>
+        <h1 className="mb-1 text-xl font-bold text-gray-900">{NOME_APP}</h1>
         <p className="mb-6 text-sm text-gray-500">Entre com sua conta para continuar</p>
 
         {senhaRedefinida && (

@@ -1,4 +1,4 @@
-# Service Desk — Frontend
+# FlowDesk — Frontend
 
 Front-end React (Vite) do sistema de chamados/tickets de suporte técnico.
 Consome a API em `../backend/`. Documentação completa da arquitetura, portas,
