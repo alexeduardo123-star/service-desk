@@ -3,6 +3,7 @@ import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/useAuth";
 import { PAPEL_LABEL } from "../constants/labels";
 import { NOME_APP } from "../constants/marca";
+import Logo from "../components/Logo";
 import SinoNotificacoes from "../components/SinoNotificacoes";
 import configuracaoService from "../services/configuracaoService";
 import permissaoService from "../services/permissaoService";
@@ -48,7 +49,7 @@ export default function AppLayout() {
   return (
     <div className="flex min-h-screen">
       <aside className="w-56 shrink-0 border-r border-gray-200 bg-white p-4 print:hidden">
-        <h2 className="mb-6 text-lg font-bold text-blue-600">{NOME_APP}</h2>
+        <div className="mb-6"><Logo /></div>
         <nav className="flex flex-col gap-1">
           <NavLink to="/home" className={linkClasse}>Dashboard</NavLink>
           <NavLink to="/tickets" className={linkClasse}>Chamados</NavLink>
