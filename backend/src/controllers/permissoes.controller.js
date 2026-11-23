@@ -1,30 +1,49 @@
 import prisma from "../config/prisma.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
-import { PERMISSOES, PAPEIS } from "../constants/permissoes.js";
+import { obterOverrides, limparCachePermissoes } from "../utils/permissoesCache.js";
+import {
+  PAPEIS,
+  PERMISSOES,
+  concedidaPorPadrao,
+  montarMatriz,
+  permissoesDoPapel,
+} from "../utils/permissoes.js";
 
-export const listar = asyncHandler(async (_req, res) => {
-  const permissoes = await prisma.permissao.findMany({ orderBy: [{ grupo: "asc" }, { nome: "asc" }] });
-  const perfis = await prisma.perfilPermissao.findMany({ select: { papel: true, permissao: { select: { chave: true } } } });
-  const porPapel = Object.fromEntries(PAPEIS.map((papel) => [papel, []]));
-  for (const item of perfis) porPapel[item.papel]?.push(item.permissao.chave);
-  res.json({ permissoes: permissoes.length ? permissoes : PERMISSOES, papeis: PAPEIS, permissoesPorPapel: porPapel });
+// Permissões do usuário logado (o front usa para esconder menus e botões).
+export const minhas = asyncHandler(async (req, res) => {
+  const overrides = await obterOverrides();
+  res.json({ papel: req.user.papel, permissoes: permissoesDoPapel(req.user.papel, overrides) });
 });
 
-export const atualizarPerfil = asyncHandler(async (req, res) => {
-  const papel = String(req.params.papel || "").toUpperCase();
-  const { permissoes } = req.body;
-  if (!PAPEIS.includes(papel)) return res.status(400).json({ erro: "Perfil inválido" });
-  if (!Array.isArray(permissoes) || permissoes.some((chave) => typeof chave !== "string")) {
-    return res.status(400).json({ erro: "Informe uma lista válida de permissões" });
+// Catálogo + matriz atual (perfil x permissão) para a tela de administração.
+export const listar = asyncHandler(async (req, res) => {
+  const overrides = await obterOverrides();
+  res.json({
+    papeis: PAPEIS,
+    permissoes: Object.entries(PERMISSOES).map(([chave, p]) => ({ chave, rotulo: p.rotulo, grupo: p.grupo })),
+    matriz: montarMatriz(overrides),
+  });
+});
+
+export const atualizar = asyncHandler(async (req, res) => {
+  const { papel, permissao, concedida } = req.body;
+
+  if (papel === "ADMIN") {
+    return res.status(400).json({ erro: "O perfil Administrador sempre tem todas as permissões" });
   }
-  if (papel === "ADMIN") return res.status(400).json({ erro: "As permissões do Administrador são sempre completas" });
 
-  const existentes = await prisma.permissao.findMany({ where: { chave: { in: permissoes } }, select: { id: true, chave: true } });
-  if (existentes.length !== new Set(permissoes).size) return res.status(400).json({ erro: "Uma ou mais permissões são inválidas" });
+  // Voltar ao valor padrão apaga o ajuste, em vez de guardar uma linha redundante.
+  if (concedida === concedidaPorPadrao(papel, permissao)) {
+    await prisma.perfilPermissao.deleteMany({ where: { papel, permissao } });
+  } else {
+    await prisma.perfilPermissao.upsert({
+      where: { papel_permissao: { papel, permissao } },
+      update: { concedida },
+      create: { papel, permissao, concedida },
+    });
+  }
 
-  await prisma.$transaction([
-    prisma.perfilPermissao.deleteMany({ where: { papel } }),
-    ...existentes.map(({ id }) => prisma.perfilPermissao.create({ data: { papel, permissaoId: id } })),
-  ]);
-  res.json({ papel, permissoes: existentes.map(({ chave }) => chave) });
+  limparCachePermissoes();
+  const overrides = await obterOverrides();
+  res.json({ papel, permissao, concedida, matriz: montarMatriz(overrides) });
 });

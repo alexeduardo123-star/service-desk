@@ -79,7 +79,7 @@ npm run dev                 # http://localhost:5173
 ```
 
 Usuários de teste (senha `123456`): `admin@servicedesk.com`,
-`tecnico@servicedesk.com`, `usuario@servicedesk.com`.
+`tecnico@servicedesk.com`, `gestor@servicedesk.com`, `usuario@servicedesk.com`.
 
 ## Atualizando um clone que já estava rodando
 

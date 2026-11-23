@@ -65,6 +65,11 @@ async function main() {
     update: {},
     create: { nome: "Técnico Suporte", email: "tecnico@servicedesk.com", senhaHash, papel: "TECNICO", departamentoId: departamentoTI.id },
   });
+  await prisma.usuario.upsert({
+    where: { email: "gestor@servicedesk.com" },
+    update: {},
+    create: { nome: "Gestor da Área", email: "gestor@servicedesk.com", senhaHash, papel: "GESTOR", departamentoId: departamentoTI.id },
+  });
   const solicitante = await prisma.usuario.upsert({
     where: { email: "usuario@servicedesk.com" },
     update: {},

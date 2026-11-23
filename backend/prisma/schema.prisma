@@ -9,8 +9,8 @@ datasource db {
 
 enum PapelUsuario {
   ADMIN
-  GESTOR
   TECNICO
+  GESTOR
   SOLICITANTE
 }
 
@@ -62,26 +62,18 @@ model Usuario {
   @@map("usuarios")
 }
 
-model Permissao {
-  id          Int                 @id @default(autoincrement())
-  chave       String              @unique
-  nome        String
-  grupo       String
-  descricao   String?
-  perfis      PerfilPermissao[]
-
-  @@map("permissoes")
-}
-
+// Ajustes de permissão por perfil. As permissões e seus valores padrão ficam no
+// código (src/utils/permissoes.js); esta tabela guarda só o que o administrador
+// liberou ou bloqueou diferente do padrão.
 model PerfilPermissao {
-  id           Int          @id @default(autoincrement())
-  papel        PapelUsuario
-  permissaoId  Int
-  permissao    Permissao    @relation(fields: [permissaoId], references: [id], onDelete: Cascade)
+  id         Int          @id @default(autoincrement())
+  papel      PapelUsuario
+  permissao  String
+  concedida  Boolean
+  updatedAt  DateTime     @updatedAt
 
-  @@unique([papel, permissaoId])
-  @@index([papel])
-  @@map("perfis_permissoes")
+  @@unique([papel, permissao])
+  @@map("perfil_permissoes")
 }
 
 model Departamento {

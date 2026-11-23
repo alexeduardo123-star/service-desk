@@ -10,6 +10,7 @@ vi.mock("../config/prisma.js", () => ({
       create: vi.fn(),
       update: vi.fn(),
     },
+    perfilPermissao: { findMany: vi.fn().mockResolvedValue([]) },
   },
 }));
 vi.mock("../utils/mailer.js", () => ({

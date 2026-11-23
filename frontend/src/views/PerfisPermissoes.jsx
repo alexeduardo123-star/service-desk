@@ -1,98 +1,106 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import permissaoService from "../services/permissaoService";
-import { PAPEL_LABEL } from "../constants/labels";
-import Botao from "../components/Botao";
-import Toggle from "../components/Toggle";
 import { useNotification } from "../store/useNotification";
+import { PAPEL_LABEL } from "../constants/labels";
 
-const PAPEL_NOME = { ADMIN: "Administrador", GESTOR: "Gestor", TECNICO: "Técnico", SOLICITANTE: "Solicitante" };
-
+// Matriz perfil x permissão. O administrador marca o que cada perfil pode fazer;
+// o perfil Administrador sempre tem tudo e aparece travado.
 export default function PerfisPermissoes() {
   const [dados, setDados] = useState(null);
-  const [papel, setPapel] = useState("GESTOR");
-  const [selecionadas, setSelecionadas] = useState([]);
-  const [salvando, setSalvando] = useState(false);
+  const [salvando, setSalvando] = useState("");
   const { notificar } = useNotification();
 
   useEffect(() => {
-    permissaoService.listar()
-      .then((resposta) => {
-        setDados(resposta);
-        setSelecionadas(resposta.permissoesPorPapel[papel] || []);
-      })
-      .catch(() => notificar("Não foi possível carregar as permissões", "erro"));
+    permissaoService
+      .listar()
+      .then(setDados)
+      .catch(() => notificar("Erro ao carregar permissões", "erro"));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const grupos = useMemo(() => {
-    if (!dados) return [];
-    return Object.entries(dados.permissoes.reduce((acc, permissao) => {
-      (acc[permissao.grupo] ||= []).push(permissao);
-      return acc;
-    }, {}));
-  }, [dados]);
-
-  function trocarPapel(novoPapel) {
-    setPapel(novoPapel);
-    setSelecionadas(dados?.permissoesPorPapel[novoPapel] || []);
-  }
-
-  function alternar(chave, ativo) {
-    setSelecionadas((atuais) => ativo ? [...atuais, chave] : atuais.filter((item) => item !== chave));
-  }
-
-  async function salvar() {
-    setSalvando(true);
+  async function alternar(papel, permissao, concedida) {
+    const chave = `${papel}:${permissao}`;
+    setSalvando(chave);
     try {
-      const resposta = await permissaoService.atualizarPerfil(papel, selecionadas);
-      setDados((atual) => ({ ...atual, permissoesPorPapel: { ...atual.permissoesPorPapel, [papel]: resposta.permissoes } }));
-      notificar(`Permissões do perfil ${PAPEL_NOME[papel]} atualizadas`);
-    } catch (erro) {
-      notificar(erro.response?.data?.erro || "Erro ao salvar permissões", "erro");
+      const resposta = await permissaoService.atualizar(papel, permissao, concedida);
+      setDados((atual) => ({ ...atual, matriz: resposta.matriz }));
+    } catch (err) {
+      notificar(err.response?.data?.erro || "Não foi possível salvar a permissão", "erro");
     } finally {
-      setSalvando(false);
+      setSalvando("");
     }
   }
 
-  if (!dados) return <p className="text-sm text-gray-500">Carregando perfis e permissões…</p>;
+  if (!dados) return <p className="text-sm text-gray-500">Carregando...</p>;
+
+  const grupos = [...new Set(dados.permissoes.map((p) => p.grupo))];
 
   return (
-    <div className="max-w-4xl">
-      <div className="mb-6">
-        <h1 className="text-xl font-semibold text-gray-900">Perfis e permissões</h1>
-        <p className="mt-1 text-sm text-gray-500">Escolha um perfil para consultar e definir quais recursos seus usuários podem acessar.</p>
-      </div>
+    <div>
+      <h1 className="text-xl font-semibold text-gray-900">Perfis e permissões</h1>
+      <p className="mt-1 mb-4 text-sm text-gray-600">
+        Defina o que cada perfil pode fazer no sistema. As mudanças valem na hora, para todos os usuários do perfil.
+      </p>
 
-      <section className="mb-6 rounded-lg border border-gray-200 bg-white p-4">
-        <label htmlFor="perfil-acesso" className="mb-2 block text-sm font-medium text-gray-700">Perfil de acesso</label>
-        <select id="perfil-acesso" value={papel} onChange={(e) => trocarPapel(e.target.value)} className="w-full max-w-sm rounded-md border border-gray-300 bg-white px-3 py-2 text-sm">
-          {dados.papeis.map((item) => <option key={item} value={item}>{PAPEL_NOME[item] || PAPEL_LABEL[item] || item}</option>)}
-        </select>
-        {papel === "ADMIN" && <p className="mt-3 text-sm text-gray-500">O Administrador possui acesso completo e suas permissões não podem ser restringidas por esta tela.</p>}
-      </section>
-
-      <div className="space-y-4">
-        {grupos.map(([grupo, permissoes]) => (
-          <section key={grupo} className="rounded-lg border border-gray-200 bg-white px-4">
-            <h2 className="border-b border-gray-100 py-3 text-sm font-semibold text-gray-900">{grupo}</h2>
-            {permissoes.map((permissao) => (
-              <Toggle
-                key={permissao.chave}
-                label={permissao.nome}
-                descricao={permissao.descricao}
-                checked={papel === "ADMIN" || selecionadas.includes(permissao.chave)}
-                disabled={papel === "ADMIN"}
-                onChange={(ativo) => alternar(permissao.chave, ativo)}
+      <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
+        <table className="w-full text-sm">
+          <thead className="bg-gray-50 text-left text-xs uppercase text-gray-500">
+            <tr>
+              <th className="px-4 py-3">Permissão</th>
+              {dados.papeis.map((papel) => (
+                <th key={papel} className="px-4 py-3 text-center">
+                  {PAPEL_LABEL[papel] ?? papel}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {grupos.map((grupo) => (
+              <GrupoLinhas
+                key={grupo}
+                grupo={grupo}
+                permissoes={dados.permissoes.filter((p) => p.grupo === grupo)}
+                papeis={dados.papeis}
+                matriz={dados.matriz}
+                salvando={salvando}
+                onAlternar={alternar}
               />
             ))}
-          </section>
-        ))}
-      </div>
-
-      <div className="mt-6 flex items-center justify-between">
-        <p className="text-xs text-gray-500">As alterações passam a valer imediatamente para os usuários do perfil.</p>
-        <Botao onClick={salvar} disabled={salvando || papel === "ADMIN"}>{salvando ? "Salvando…" : "Salvar permissões"}</Botao>
+          </tbody>
+        </table>
       </div>
     </div>
+  );
+}
+
+function GrupoLinhas({ grupo, permissoes, papeis, matriz, salvando, onAlternar }) {
+  return (
+    <>
+      <tr className="bg-gray-100">
+        <td colSpan={papeis.length + 1} className="px-4 py-2 text-xs font-semibold uppercase text-gray-600">
+          {grupo}
+        </td>
+      </tr>
+      {permissoes.map((p) => (
+        <tr key={p.chave} className="border-t border-gray-100">
+          <td className="px-4 py-2 text-gray-800">{p.rotulo}</td>
+          {papeis.map((papel) => {
+            const travado = papel === "ADMIN";
+            const marcado = Boolean(matriz[papel]?.[p.chave]);
+            return (
+              <td key={papel} className="px-4 py-2 text-center">
+                <input
+                  type="checkbox"
+                  aria-label={`${PAPEL_LABEL[papel] ?? papel}: ${p.rotulo}`}
+                  checked={marcado}
+                  disabled={travado || salvando === `${papel}:${p.chave}`}
+                  onChange={(e) => onAlternar(papel, p.chave, e.target.checked)}
+                />
+              </td>
+            );
+          })}
+        </tr>
+      ))}
+    </>
   );
 }

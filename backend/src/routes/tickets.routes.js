@@ -1,7 +1,7 @@
 import { Router } from "express";
 import * as tickets from "../controllers/tickets.controller.js";
 import * as comentarios from "../controllers/comentarios.controller.js";
-import { authMiddleware, requirePermission } from "../middlewares/auth.js";
+import { authMiddleware, requirePermissao } from "../middlewares/auth.js";
 import { validate } from "../middlewares/validate.js";
 import { alterarStatusSchema, atribuirSchema, suspenderSchema } from "../schemas/ticket.schemas.js";
 
@@ -13,11 +13,11 @@ router.get("/", tickets.listar);
 router.get("/:id", tickets.buscar);
 router.post("/", tickets.criar);
 router.put("/:id", tickets.atualizar);
-router.patch("/:id/status", requirePermission("TICKETS_GERENCIAR"), validate(alterarStatusSchema), tickets.alterarStatus);
-router.patch("/:id/suspender", requirePermission("TICKETS_GERENCIAR"), validate(suspenderSchema), tickets.suspender);
-router.patch("/:id/retomar", requirePermission("TICKETS_GERENCIAR"), tickets.retomar);
-router.patch("/:id/atribuir", requirePermission("TICKETS_GERENCIAR"), validate(atribuirSchema), tickets.atribuir);
-router.delete("/:id", requirePermission("TICKETS_EXCLUIR"), tickets.excluir);
+router.patch("/:id/status", requirePermissao("tickets.tratar"), validate(alterarStatusSchema), tickets.alterarStatus);
+router.patch("/:id/suspender", requirePermissao("tickets.tratar"), validate(suspenderSchema), tickets.suspender);
+router.patch("/:id/retomar", requirePermissao("tickets.tratar"), tickets.retomar);
+router.patch("/:id/atribuir", requirePermissao("tickets.tratar"), validate(atribuirSchema), tickets.atribuir);
+router.delete("/:id", requirePermissao("tickets.excluir"), tickets.excluir);
 
 router.get("/:ticketId/comentarios", comentarios.listar);
 router.post("/:ticketId/comentarios", comentarios.criar);

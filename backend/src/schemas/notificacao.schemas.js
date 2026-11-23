@@ -12,7 +12,7 @@ export const criarNotificacaoSchema = z.object({
     "tipo",
     [
       z.object({ tipo: z.literal("TODOS") }),
-      z.object({ tipo: z.literal("PAPEL"), papel: z.enum(["ADMIN", "TECNICO", "SOLICITANTE"], { message: "papel inválido" }) }),
+      z.object({ tipo: z.literal("PAPEL"), papel: z.enum(["ADMIN", "TECNICO", "GESTOR", "SOLICITANTE"], { message: "papel inválido" }) }),
       z.object({ tipo: z.literal("USUARIO"), usuarioId: z.number({ message: "usuarioId é obrigatório" }).int().positive() }),
     ],
     { message: "destino inválido" }

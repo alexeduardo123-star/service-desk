@@ -4,7 +4,7 @@ import contratoService from "../services/contratoService";
 import fornecedorService from "../services/fornecedorService";
 import equipamentoService from "../services/equipamentoService";
 import { useAuth } from "../auth/useAuth";
-import { PapelUsuario } from "../enum/PapelUsuario";
+import { temPermissao } from "../utils/permissoes";
 import { formatDateOnly } from "../utils/formatDate";
 
 export default function Contratos() {
@@ -132,11 +132,9 @@ export default function Contratos() {
     { key: "status", label: "Situação" },
   ];
 
-  const podeEscrever =
-    usuario?.papel === PapelUsuario.ADMIN ||
-    usuario?.permissoes?.includes("CONTRATOS_ACESSAR");
+  const podeEscrever = temPermissao(usuario, "contratos.gerenciar");
 
-  const podeExcluir = usuario?.papel === PapelUsuario.ADMIN || usuario?.permissoes?.includes("CONTRATOS_EXCLUIR");
+  const podeExcluir = temPermissao(usuario, "contratos.excluir");
 
   return (
     <div>

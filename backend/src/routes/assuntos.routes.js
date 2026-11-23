@@ -1,6 +1,6 @@
 import { Router } from "express";
 import * as controller from "../controllers/assuntos.controller.js";
-import { authMiddleware, requirePermission } from "../middlewares/auth.js";
+import { authMiddleware, requirePermissao } from "../middlewares/auth.js";
 import { validate } from "../middlewares/validate.js";
 import { validateId } from "../middlewares/validateId.js";
 import { assuntoSchema } from "../schemas/assunto.schema.js";
@@ -14,8 +14,8 @@ router.use(authMiddleware);
 router.get("/", controller.listar);
 router.get("/:id", validateId, controller.buscar);
 
-router.post("/", requirePermission("ASSUNTOS_GERENCIAR"), validate(assuntoSchema), controller.criar);
-router.put("/:id", requirePermission("ASSUNTOS_GERENCIAR"), validateId, validate(assuntoSchema), controller.atualizar);
-router.delete("/:id", requirePermission("ASSUNTOS_GERENCIAR"), validateId, controller.excluir);
+router.post("/", requirePermissao("cadastros.gerenciar"), validate(assuntoSchema), controller.criar);
+router.put("/:id", requirePermissao("cadastros.gerenciar"), validateId, validate(assuntoSchema), controller.atualizar);
+router.delete("/:id", requirePermissao("cadastros.gerenciar"), validateId, controller.excluir);
 
 export default router;

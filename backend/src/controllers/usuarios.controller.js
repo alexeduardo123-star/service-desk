@@ -1,6 +1,8 @@
 import bcrypt from "bcryptjs";
 import prisma from "../config/prisma.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
+import { obterOverrides } from "../utils/permissoesCache.js";
+import { permissoesDoPapel } from "../utils/permissoes.js";
 
 const semSenha = {
   id: true,
@@ -19,12 +21,8 @@ export const me = asyncHandler(async (req, res) => {
     where: { id: req.user.id },
     select: { ...semSenha, departamento: { select: { id: true, nome: true } } },
   });
-  if (!usuario) return res.status(404).json({ erro: "Não encontrado" });
-  const registros = await prisma.perfilPermissao.findMany({
-    where: { papel: usuario.papel },
-    select: { permissao: { select: { chave: true } } },
-  });
-  res.json({ ...usuario, permissoes: usuario.papel === "ADMIN" ? ["*"] : registros.map((item) => item.permissao.chave) });
+  const overrides = await obterOverrides();
+  res.json({ ...usuario, permissoes: permissoesDoPapel(usuario.papel, overrides) });
 });
 
 // O próprio usuário edita nome/telefone/cargo. Papel, email e departamento só
@@ -67,9 +65,6 @@ export const buscar = asyncHandler(async (req, res) => {
 
 export const criar = asyncHandler(async (req, res) => {
   const { nome, email, senha, papel, departamentoId, ativo } = req.body;
-  if (papel === "ADMIN" && req.user.papel !== "ADMIN") {
-    return res.status(403).json({ erro: "Somente um administrador pode criar outro administrador" });
-  }
   if (!senha) return res.status(400).json({ erro: "senha é obrigatória" });
   const senhaHash = await bcrypt.hash(senha, 10);
   const usuario = await prisma.usuario.create({
@@ -81,14 +76,6 @@ export const criar = asyncHandler(async (req, res) => {
 
 export const atualizar = asyncHandler(async (req, res) => {
   const { nome, email, senha, papel, departamentoId, ativo } = req.body;
-  const usuarioAtual = await prisma.usuario.findUnique({ where: { id: Number(req.params.id) }, select: { papel: true } });
-  if (!usuarioAtual) return res.status(404).json({ erro: "Não encontrado" });
-  if (req.user.papel !== "ADMIN" && usuarioAtual.papel === "ADMIN") {
-    return res.status(403).json({ erro: "Somente um administrador pode alterar outro administrador" });
-  }
-  if (papel === "ADMIN" && req.user.papel !== "ADMIN") {
-    return res.status(403).json({ erro: "Somente um administrador pode atribuir o perfil Administrador" });
-  }
   const data = { nome, email, papel, departamentoId, ativo };
   if (senha) data.senhaHash = await bcrypt.hash(senha, 10);
 
@@ -101,11 +88,6 @@ export const atualizar = asyncHandler(async (req, res) => {
 });
 
 export const excluir = asyncHandler(async (req, res) => {
-  const usuarioAtual = await prisma.usuario.findUnique({ where: { id: Number(req.params.id) }, select: { papel: true } });
-  if (!usuarioAtual) return res.status(404).json({ erro: "Não encontrado" });
-  if (req.user.papel !== "ADMIN" && usuarioAtual.papel === "ADMIN") {
-    return res.status(403).json({ erro: "Somente um administrador pode excluir outro administrador" });
-  }
   await prisma.usuario.delete({ where: { id: Number(req.params.id) } });
   res.status(204).send();
 });

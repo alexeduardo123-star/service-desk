@@ -1,13 +1,13 @@
 import { Router } from "express";
 import * as relatorios from "../controllers/relatorios.controller.js";
 import * as salvos from "../controllers/relatoriosSalvos.controller.js";
-import { authMiddleware, requirePermission } from "../middlewares/auth.js";
+import { authMiddleware, requirePermissao } from "../middlewares/auth.js";
 import { validate } from "../middlewares/validate.js";
 import { relatorioSalvoSchema, relatorioSalvoAtualizacaoSchema } from "../schemas/relatorio.schemas.js";
 
 const router = Router();
 
-router.use(authMiddleware, requirePermission("RELATORIOS_ACESSAR"));
+router.use(authMiddleware, requirePermissao("relatorios.ver"));
 
 router.get("/chamados", relatorios.chamados);
 

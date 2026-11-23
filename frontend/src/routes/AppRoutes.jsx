@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import { useAuth } from "../auth/useAuth";
+import { temPermissao } from "../utils/permissoes";
 import AppLayout from "../layouts/AppLayout";
 
 import Login from "../views/Login";
@@ -25,13 +26,11 @@ import Kanban from "../views/Kanban";
 import Relatorios from "../views/Relatorios";
 import PerfisPermissoes from "../views/PerfisPermissoes";
 
-function RotaPrivada({ children, permission }) {
+// permissao: chave de permissão exigida (ver backend/src/utils/permissoes.js).
+function RotaPrivada({ children, permissao }) {
   const { logado, usuario } = useAuth();
   if (!logado) return <Navigate to="/" />;
-  const permissoes = usuario?.permissoes || [];
-  if (permission && usuario?.papel !== "ADMIN" && !permissoes.includes(permission) && !permissoes.includes("*")) {
-    return <Navigate to="/home" />;
-  }
+  if (permissao && !temPermissao(usuario, permissao)) return <Navigate to="/home" />;
   return children;
 }
 
@@ -61,7 +60,7 @@ export default function AppRoutes() {
         <Route
           path="/relatorios"
           element={
-            <RotaPrivada permission="RELATORIOS_ACESSAR">
+            <RotaPrivada permissao="relatorios.ver">
               <Relatorios />
             </RotaPrivada>
           }
@@ -69,7 +68,7 @@ export default function AppRoutes() {
         <Route
           path="/admin/equipamentos"
           element={
-            <RotaPrivada permission="EQUIPAMENTOS_ACESSAR">
+            <RotaPrivada permissao="equipamentos.gerenciar">
               <Equipamentos />
             </RotaPrivada>
           }
@@ -77,7 +76,7 @@ export default function AppRoutes() {
         <Route
           path="/admin/contratos"
           element={
-            <RotaPrivada permission="CONTRATOS_ACESSAR">
+            <RotaPrivada permissao="contratos.ver">
               <Contratos />
             </RotaPrivada>
           }
@@ -85,15 +84,23 @@ export default function AppRoutes() {
         <Route
           path="/admin/usuarios"
           element={
-            <RotaPrivada permission="USUARIOS_GERENCIAR">
+            <RotaPrivada permissao="usuarios.gerenciar">
               <Usuarios />
+            </RotaPrivada>
+          }
+        />
+        <Route
+          path="/admin/perfis"
+          element={
+            <RotaPrivada permissao="permissoes.gerenciar">
+              <PerfisPermissoes />
             </RotaPrivada>
           }
         />
         <Route
           path="/admin/departamentos"
           element={
-            <RotaPrivada permission="DEPARTAMENTOS_GERENCIAR">
+            <RotaPrivada permissao="cadastros.gerenciar">
               <Departamentos />
             </RotaPrivada>
           }
@@ -101,7 +108,7 @@ export default function AppRoutes() {
         <Route
           path="/admin/categorias"
           element={
-            <RotaPrivada permission="CATEGORIAS_GERENCIAR">
+            <RotaPrivada permissao="cadastros.gerenciar">
               <Categorias />
             </RotaPrivada>
           }
@@ -109,7 +116,7 @@ export default function AppRoutes() {
         <Route
           path="/admin/prioridades"
           element={
-            <RotaPrivada permission="PRIORIDADES_GERENCIAR">
+            <RotaPrivada permissao="cadastros.gerenciar">
               <Prioridades />
             </RotaPrivada>
           }
@@ -117,7 +124,7 @@ export default function AppRoutes() {
         <Route
           path="/admin/servicos"
           element={
-            <RotaPrivada permission="SERVICOS_GERENCIAR">
+            <RotaPrivada permissao="cadastros.gerenciar">
               <Servicos />
             </RotaPrivada>
           }
@@ -125,23 +132,15 @@ export default function AppRoutes() {
         <Route
           path="/admin/assuntos"
           element={
-            <RotaPrivada permission="ASSUNTOS_GERENCIAR">
+            <RotaPrivada permissao="cadastros.gerenciar">
               <Assuntos />
-            </RotaPrivada>
-          }
-        />
-        <Route
-          path="/admin/permissoes"
-          element={
-            <RotaPrivada permission="PERFIS_GERENCIAR">
-              <PerfisPermissoes />
             </RotaPrivada>
           }
         />
         <Route
           path="/admin/formularios"
           element={
-            <RotaPrivada permission="FORMULARIOS_GERENCIAR">
+            <RotaPrivada permissao="cadastros.gerenciar">
               <Formularios />
             </RotaPrivada>
           }

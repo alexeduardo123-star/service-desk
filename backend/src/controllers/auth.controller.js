@@ -4,6 +4,8 @@ import jwt from "jsonwebtoken";
 import prisma from "../config/prisma.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { enviarEmail } from "../utils/mailer.js";
+import { obterOverrides } from "../utils/permissoesCache.js";
+import { permissoesDoPapel } from "../utils/permissoes.js";
 
 const CODIGO_VALIDADE_MINUTOS = 15;
 
@@ -23,19 +25,16 @@ function gerarToken(usuario) {
   );
 }
 
+// Dados do usuário que vão para o front junto com o token, incluindo as
+// permissões do perfil (o menu e os botões se baseiam nelas).
 async function usuarioPublico(usuario) {
-  const registros = prisma.perfilPermissao?.findMany
-    ? await prisma.perfilPermissao.findMany({
-        where: { papel: usuario.papel },
-        select: { permissao: { select: { chave: true } } },
-      })
-    : [];
+  const overrides = await obterOverrides();
   return {
     id: usuario.id,
     nome: usuario.nome,
     email: usuario.email,
     papel: usuario.papel,
-    permissoes: usuario.papel === "ADMIN" ? ["*"] : registros.map((item) => item.permissao.chave),
+    permissoes: permissoesDoPapel(usuario.papel, overrides),
   };
 }
 

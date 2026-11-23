@@ -1,7 +1,7 @@
 export const PapelUsuario = Object.freeze({
   ADMIN: "ADMIN",
-  GESTOR: "GESTOR",
   TECNICO: "TECNICO",
+  GESTOR: "GESTOR",
   SOLICITANTE: "SOLICITANTE",
 });
 

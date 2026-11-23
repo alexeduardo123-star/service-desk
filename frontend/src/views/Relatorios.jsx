@@ -16,6 +16,7 @@ import departamentoService from "../services/departamentoService";
 import prioridadeService from "../services/prioridadeService";
 import usuarioService from "../services/usuarioService";
 import { PapelUsuario } from "../enum/PapelUsuario";
+import { temPermissao } from "../utils/permissoes";
 import { StatusTicket } from "../enum/StatusTicket";
 import { STATUS_LABEL } from "../constants/labels";
 import { CORES_STATUS } from "../constants/cores";
@@ -55,7 +56,8 @@ const filtrosIniciais = () => ({ ...FILTROS_RELATORIO_VAZIOS, de: dataDiasAtras(
 export default function Relatorios() {
   const { usuario } = useAuth();
   const { notificar } = useNotification();
-  const isAdmin = usuario?.papel === PapelUsuario.ADMIN;
+  // Só quem gerencia usuários consegue listar os técnicos para o filtro.
+  const isAdmin = temPermissao(usuario, "usuarios.gerenciar");
 
   const [filtros, setFiltros] = useState(filtrosIniciais);
   const [relatorio, setRelatorio] = useState(null);
