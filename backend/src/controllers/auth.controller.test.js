@@ -9,16 +9,19 @@ vi.mock("../config/prisma.js", () => ({
       findUnique: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
+      delete: vi.fn(),
     },
     perfilPermissao: { findMany: vi.fn().mockResolvedValue([]) },
   },
 }));
-vi.mock("../utils/mailer.js", () => ({
+vi.mock("../utils/mailer.js", async (importOriginal) => ({
+  ...(await importOriginal()),
   enviarEmail: vi.fn(),
+  emailConfigurado: vi.fn(() => true),
 }));
 
 const prisma = (await import("../config/prisma.js")).default;
-const { enviarEmail } = await import("../utils/mailer.js");
+const { enviarEmail, emailConfigurado, AVISO_EMAIL_DEV } = await import("../utils/mailer.js");
 const {
   registrar,
   verificarEmail,
@@ -67,6 +70,52 @@ describe("registrar", () => {
     expect(enviarEmail).toHaveBeenCalledWith(expect.objectContaining({ to: "fulano@example.com" }));
     expect(res.status).toHaveBeenCalledWith(201);
     expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ email: "fulano@example.com" }));
+  });
+
+  it("usa o nome FlowDesk e escapa o nome do usuário no HTML do email", async () => {
+    prisma.usuario.create.mockResolvedValue({
+      ...USUARIO_BASE,
+      nome: "<b>Fulano</b>",
+      emailVerificado: false,
+    });
+    prisma.usuario.update.mockResolvedValue({});
+
+    const req = { body: { nome: "<b>Fulano</b>", email: "fulano@example.com", senha: "123456" } };
+    await registrar(req, mockRes(), throwingNext);
+
+    const email = enviarEmail.mock.calls[0][0];
+    expect(email.subject).toContain("FlowDesk");
+    expect(email.html).toContain("&lt;b&gt;Fulano&lt;/b&gt;");
+    expect(email.html).not.toContain("<b>Fulano</b>");
+  });
+
+  it("desfaz o cadastro e responde 502 se o email não puder ser enviado", async () => {
+    prisma.usuario.create.mockResolvedValue({ ...USUARIO_BASE, emailVerificado: false });
+    prisma.usuario.update.mockResolvedValue({});
+    prisma.usuario.delete.mockResolvedValue({});
+    enviarEmail.mockRejectedValueOnce(new Error("SMTP fora do ar"));
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const req = { body: { nome: "Fulano", email: "fulano@example.com", senha: "123456" } };
+    const res = mockRes();
+    const next = vi.fn();
+    await registrar(req, res, next);
+
+    expect(prisma.usuario.delete).toHaveBeenCalledWith({ where: { id: USUARIO_BASE.id } });
+    expect(next).toHaveBeenCalledWith(expect.objectContaining({ status: 502 }));
+    expect(res.status).not.toHaveBeenCalledWith(201);
+  });
+
+  it("avisa na mensagem quando o SMTP não está configurado", async () => {
+    emailConfigurado.mockReturnValueOnce(false);
+    prisma.usuario.create.mockResolvedValue({ ...USUARIO_BASE, emailVerificado: false });
+    prisma.usuario.update.mockResolvedValue({});
+
+    const req = { body: { nome: "Fulano", email: "fulano@example.com", senha: "123456" } };
+    const res = mockRes();
+    await registrar(req, res, throwingNext);
+
+    expect(res.json.mock.calls[0][0].mensagem).toContain(AVISO_EMAIL_DEV.trim());
   });
 });
 

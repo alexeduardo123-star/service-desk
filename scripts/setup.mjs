@@ -127,6 +127,17 @@ try {
 passo("Populando dados de teste (seed)");
 rodar("node prisma/seed.js", backend);
 
+// O .env não vai para o Git: avisa quando o envio de email não está configurado,
+// senão a pessoa fica esperando o código de cadastro/senha que nunca chega.
+const envTexto = readFileSync(join(backend, ".env"), "utf8");
+const smtp = (nome) => (envTexto.match(new RegExp(`^${nome}=(.*)$`, "m"))?.[1] || "").replace(/["']/g, "").trim();
+if (!smtp("SMTP_HOST") || !smtp("SMTP_USER") || !smtp("SMTP_PASS")) {
+  console.log(`
+[AVISO] Envio de email NÃO configurado no backend/.env (SMTP_HOST/SMTP_USER/SMTP_PASS).
+Os códigos de confirmação de cadastro e de "esqueci a senha" vão aparecer só no
+terminal do backend. Para enviar de verdade, veja "Envio de email" no README.`);
+}
+
 console.log(`
 Pronto! Agora rode:
 

@@ -54,7 +54,7 @@ export async function notificarUsuarios(
     for (const u of aEntregar) {
       if (u.email && configPorUsuario.get(u.id)?.notificarEmail) {
         deps
-          .enviarEmail({ to: u.email, subject: `${titulo} — Service Desk`, text: mensagem })
+          .enviarEmail({ to: u.email, subject: `${titulo} — FlowDesk`, text: mensagem })
           .catch((err) => console.error("[notificar] falha ao enviar email:", err.message));
       }
     }

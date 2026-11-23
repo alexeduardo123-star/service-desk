@@ -3,7 +3,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import prisma from "../config/prisma.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
-import { enviarEmail } from "../utils/mailer.js";
+import { enviarEmail, emailConfigurado, escaparHtml, AVISO_EMAIL_DEV } from "../utils/mailer.js";
 import { obterOverrides } from "../utils/permissoesCache.js";
 import { permissoesDoPapel } from "../utils/permissoes.js";
 
@@ -11,6 +11,21 @@ const CODIGO_VALIDADE_MINUTOS = 15;
 
 function gerarCodigoNumerico() {
   return crypto.randomInt(0, 1_000_000).toString().padStart(6, "0");
+}
+
+// Erro com status HTTP próprio, tratado pelo errorHandler.
+function erroEnvioEmail(causa) {
+  console.error("[auth] Falha ao enviar email:", causa);
+  const erro = new Error(
+    "Não foi possível enviar o email agora. Tente novamente em alguns minutos."
+  );
+  erro.status = 502;
+  return erro;
+}
+
+// Acrescenta o aviso de "email só no terminal" quando o SMTP não está configurado.
+function comAvisoDev(mensagem) {
+  return emailConfigurado() ? mensagem : mensagem + AVISO_EMAIL_DEV;
 }
 
 function hashToken(token) {
@@ -51,14 +66,14 @@ async function enviarCodigoVerificacao(usuario) {
 
   await enviarEmail({
     to: usuario.email,
-    subject: "Confirme seu email — Service Desk",
+    subject: "Confirme seu email — FlowDesk",
     text:
       `Olá, ${usuario.nome}!\n\n` +
       `Use o código abaixo para confirmar seu email e ativar sua conta. Ele expira em ${CODIGO_VALIDADE_MINUTOS} minutos:\n\n` +
       `${codigo}\n\n` +
       `Se você não fez esse cadastro, ignore este email.`,
     html:
-      `<p>Olá, ${usuario.nome}!</p>` +
+      `<p>Olá, ${escaparHtml(usuario.nome)}!</p>` +
       `<p>Use o código abaixo para confirmar seu email e ativar sua conta. Ele expira em ${CODIGO_VALIDADE_MINUTOS} minutos:</p>` +
       `<p style="font-size:24px;font-weight:bold;letter-spacing:4px;">${codigo}</p>` +
       `<p>Se você não fez esse cadastro, ignore este email.</p>`,
@@ -73,10 +88,17 @@ export const registrar = asyncHandler(async (req, res) => {
     data: { nome, email, senhaHash, papel: "SOLICITANTE", emailVerificado: false },
   });
 
-  await enviarCodigoVerificacao(usuario);
+  try {
+    await enviarCodigoVerificacao(usuario);
+  } catch (causa) {
+    // Sem o email a pessoa não consegue ativar a conta: desfaz o cadastro para
+    // que ela possa tentar de novo com o mesmo email.
+    await prisma.usuario.delete({ where: { id: usuario.id } }).catch(() => {});
+    throw erroEnvioEmail(causa);
+  }
 
   res.status(201).json({
-    mensagem: "Cadastro realizado. Enviamos um código de confirmação para o seu email.",
+    mensagem: comAvisoDev("Cadastro realizado. Enviamos um código de confirmação para o seu email."),
     email: usuario.email,
   });
 });
@@ -108,7 +130,9 @@ export const reenviarVerificacao = asyncHandler(async (req, res) => {
   const { email } = req.body;
 
   const mensagemGenerica = {
-    mensagem: "Se este email tiver um cadastro pendente de confirmação, um novo código foi enviado.",
+    mensagem: comAvisoDev(
+      "Se este email tiver um cadastro pendente de confirmação, um novo código foi enviado."
+    ),
   };
 
   const usuario = await prisma.usuario.findUnique({ where: { email } });
@@ -116,7 +140,11 @@ export const reenviarVerificacao = asyncHandler(async (req, res) => {
     return res.json(mensagemGenerica);
   }
 
-  await enviarCodigoVerificacao(usuario);
+  try {
+    await enviarCodigoVerificacao(usuario);
+  } catch (causa) {
+    throw erroEnvioEmail(causa);
+  }
   res.json(mensagemGenerica);
 });
 
@@ -148,7 +176,7 @@ export const esqueciSenha = asyncHandler(async (req, res) => {
   const { email } = req.body;
 
   const mensagemGenerica = {
-    mensagem: "Se este email estiver cadastrado, um código de recuperação foi enviado.",
+    mensagem: comAvisoDev("Se este email estiver cadastrado, um código de recuperação foi enviado."),
   };
 
   const usuario = await prisma.usuario.findUnique({ where: { email } });
@@ -167,20 +195,24 @@ export const esqueciSenha = asyncHandler(async (req, res) => {
     data: { resetTokenHash, resetTokenExpiresAt },
   });
 
-  await enviarEmail({
-    to: usuario.email,
-    subject: "Recuperação de senha — Service Desk",
-    text:
-      `Olá, ${usuario.nome}!\n\n` +
-      `Use o código abaixo para redefinir sua senha. Ele expira em ${CODIGO_VALIDADE_MINUTOS} minutos:\n\n` +
-      `${codigo}\n\n` +
-      `Se você não solicitou isso, ignore este email.`,
-    html:
-      `<p>Olá, ${usuario.nome}!</p>` +
-      `<p>Use o código abaixo para redefinir sua senha. Ele expira em ${CODIGO_VALIDADE_MINUTOS} minutos:</p>` +
-      `<p style="font-size:24px;font-weight:bold;letter-spacing:4px;">${codigo}</p>` +
-      `<p>Se você não solicitou isso, ignore este email.</p>`,
-  });
+  try {
+    await enviarEmail({
+      to: usuario.email,
+      subject: "Recuperação de senha — FlowDesk",
+      text:
+        `Olá, ${usuario.nome}!\n\n` +
+        `Use o código abaixo para redefinir sua senha. Ele expira em ${CODIGO_VALIDADE_MINUTOS} minutos:\n\n` +
+        `${codigo}\n\n` +
+        `Se você não solicitou isso, ignore este email.`,
+      html:
+        `<p>Olá, ${escaparHtml(usuario.nome)}!</p>` +
+        `<p>Use o código abaixo para redefinir sua senha. Ele expira em ${CODIGO_VALIDADE_MINUTOS} minutos:</p>` +
+        `<p style="font-size:24px;font-weight:bold;letter-spacing:4px;">${codigo}</p>` +
+        `<p>Se você não solicitou isso, ignore este email.</p>`,
+    });
+  } catch (causa) {
+    throw erroEnvioEmail(causa);
+  }
 
   res.json(mensagemGenerica);
 });

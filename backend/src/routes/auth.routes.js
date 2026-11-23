@@ -7,7 +7,13 @@ import {
   esqueciSenha,
   redefinirSenha,
 } from "../controllers/auth.controller.js";
-import { loginLimiter, registroLimiter, resetSenhaLimiter } from "../middlewares/rateLimit.js";
+import {
+  authPorIpLimiter,
+  loginLimiter,
+  registroLimiter,
+  envioCodigoLimiter,
+  verificacaoCodigoLimiter,
+} from "../middlewares/rateLimit.js";
 import { validate } from "../middlewares/validate.js";
 import {
   registrarSchema,
@@ -19,11 +25,13 @@ import {
 
 const router = Router();
 
+router.use(authPorIpLimiter);
+
 router.post("/registro", registroLimiter, validate(registrarSchema), registrar);
-router.post("/verificar-email", resetSenhaLimiter, validate(verificarEmailSchema), verificarEmail);
-router.post("/reenviar-verificacao", registroLimiter, validate(emailSchema), reenviarVerificacao);
+router.post("/verificar-email", verificacaoCodigoLimiter, validate(verificarEmailSchema), verificarEmail);
+router.post("/reenviar-verificacao", envioCodigoLimiter, validate(emailSchema), reenviarVerificacao);
 router.post("/login", loginLimiter, validate(loginSchema), login);
-router.post("/esqueci-senha", resetSenhaLimiter, validate(emailSchema), esqueciSenha);
-router.post("/redefinir-senha", resetSenhaLimiter, validate(redefinirSenhaSchema), redefinirSenha);
+router.post("/esqueci-senha", envioCodigoLimiter, validate(emailSchema), esqueciSenha);
+router.post("/redefinir-senha", verificacaoCodigoLimiter, validate(redefinirSenhaSchema), redefinirSenha);
 
 export default router;

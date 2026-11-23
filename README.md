@@ -58,6 +58,29 @@ setup avisa. Pare o outro serviço ou use outra porta (fica salva no `.env`
 da raiz): `$env:DB_PORT=5433; npm run setup` (PowerShell) ou
 `DB_PORT=5433 npm run setup` (Git Bash/Linux/Mac).
 
+### Envio de email (cadastro e "esqueci a senha")
+
+Novos usuários recebem por email um código para confirmar o cadastro, e o
+"esqueci a senha" também envia um código. O `backend/.env` **não vai para o
+Git**, então cada pessoa precisa configurar o envio no próprio `.env`. Sem
+isso, nenhum email sai: o código aparece só no terminal do backend (e a tela
+avisa isso).
+
+Para enviar pelo Gmail, preencha no `backend/.env`:
+
+```
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=seuemail@gmail.com
+SMTP_PASS=xxxxxxxxxxxxxxxx    # senha de app, não a senha da conta
+SMTP_FROM="FlowDesk <seuemail@gmail.com>"
+```
+
+A senha de app é criada em https://myaccount.google.com/apppasswords (exige
+verificação em duas etapas ativa na conta Google). Reinicie o `npm run dev`
+depois de mudar o `.env`. O `npm run setup` mostra no final se o envio de
+email está configurado. Se o email não chegar, confira a caixa de spam.
+
 ## Subindo o projeto (manual, sem Docker)
 
 Pré-requisito: PostgreSQL rodando na porta 5432 (ver
