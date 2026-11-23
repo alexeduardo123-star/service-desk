@@ -1,6 +1,6 @@
 import { Router } from "express";
 import * as controller from "../controllers/formularios.controller.js";
-import { authMiddleware, requireRole } from "../middlewares/auth.js";
+import { authMiddleware, requirePermissao } from "../middlewares/auth.js";
 import { validate } from "../middlewares/validate.js";
 import { validateId } from "../middlewares/validateId.js";
 import { formularioSchema } from "../schemas/formulario.schema.js";
@@ -14,8 +14,8 @@ router.use(authMiddleware);
 router.get("/", controller.listar);
 router.get("/:id", validateId, controller.buscar);
 
-router.post("/", requireRole("ADMIN"), validate(formularioSchema), controller.criar);
-router.put("/:id", requireRole("ADMIN"), validateId, validate(formularioSchema), controller.atualizar);
-router.delete("/:id", requireRole("ADMIN"), validateId, controller.excluir);
+router.post("/", requirePermissao("cadastros.gerenciar"), validate(formularioSchema), controller.criar);
+router.put("/:id", requirePermissao("cadastros.gerenciar"), validateId, validate(formularioSchema), controller.atualizar);
+router.delete("/:id", requirePermissao("cadastros.gerenciar"), validateId, controller.excluir);
 
 export default router;

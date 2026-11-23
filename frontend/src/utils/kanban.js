@@ -33,7 +33,7 @@ export function slaVencido(ticket, agora = new Date()) {
 export function acaoAoMover(ticket, destino, usuario) {
   if (destino === StatusTicket.SUSPENSO) return "exigeMotivo";
   if (ticket.status === StatusTicket.SUSPENSO && destino === StatusTicket.EM_ANDAMENTO) return "retomar";
-  if (usuario.papel === PapelUsuario.TECNICO && destino === StatusTicket.EM_ANDAMENTO && !ticket.tecnico) return "assumir";
+  if ((usuario.papel === PapelUsuario.TECNICO || usuario.permissoes?.includes("TICKETS_GERENCIAR")) && destino === StatusTicket.EM_ANDAMENTO && !ticket.tecnico) return "assumir";
   return "status";
 }
 

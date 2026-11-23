@@ -70,7 +70,7 @@ const SELECT_DESTINATARIO = { id: true, nome: true, email: true, ativo: true };
 // Admins e técnicos ativos (quem precisa saber de chamados novos).
 export function buscarEquipe(deps = { prisma }) {
   return deps.prisma.usuario.findMany({
-    where: { papel: { in: ["ADMIN", "TECNICO"] }, ativo: true },
+    where: { papel: { in: ["ADMIN", "GESTOR", "TECNICO"] }, ativo: true },
     select: SELECT_DESTINATARIO,
   });
 }

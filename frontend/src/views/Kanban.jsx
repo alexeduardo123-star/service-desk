@@ -9,7 +9,7 @@ import ticketService from "../services/ticketService";
 import prioridadeService from "../services/prioridadeService";
 import categoriaService from "../services/categoriaService";
 import departamentoService from "../services/departamentoService";
-import { PapelUsuario } from "../enum/PapelUsuario";
+import { temPermissao } from "../utils/permissoes";
 import { STATUS_LABEL } from "../constants/labels";
 import { CORES_STATUS } from "../constants/cores";
 import { opcoesSetor } from "../utils/setor";
@@ -20,7 +20,7 @@ const FILTROS_VAZIOS = { busca: "", prioridadeId: "", categoriaId: "", departame
 export default function Kanban() {
   const { usuario } = useAuth();
   const { notificar } = useNotification();
-  const podeGerenciar = usuario.papel === PapelUsuario.ADMIN || usuario.papel === PapelUsuario.TECNICO;
+  const podeGerenciar = temPermissao(usuario, "tickets.tratar");
 
   const [tickets, setTickets] = useState([]);
   const [prioridades, setPrioridades] = useState([]);

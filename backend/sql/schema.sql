@@ -7,7 +7,7 @@
 -- prisma/schema.prisma mudar, regenere este arquivo a partir das migrations
 -- em prisma/migrations/ para os dois ficarem equivalentes de fato.
 
-CREATE TYPE "PapelUsuario" AS ENUM ('ADMIN', 'TECNICO', 'SOLICITANTE');
+CREATE TYPE "PapelUsuario" AS ENUM ('ADMIN', 'TECNICO', 'GESTOR', 'SOLICITANTE');
 CREATE TYPE "StatusTicket" AS ENUM ('ABERTO', 'EM_ANDAMENTO', 'AGUARDANDO_USUARIO', 'SUSPENSO', 'FECHADO');
 CREATE TYPE "TipoNotificacao" AS ENUM ('TICKET_CRIADO', 'TICKET_ATRIBUIDO', 'TICKET_STATUS', 'TICKET_COMENTARIO', 'SISTEMA');
 CREATE TYPE "TipoCampoFormulario" AS ENUM ('TEXTO', 'TEXTO_LONGO', 'NUMERO', 'DATA', 'SELECAO', 'CHECKBOX');
@@ -34,6 +34,15 @@ CREATE TABLE "usuarios" (
     "emailVerificado"             BOOLEAN NOT NULL DEFAULT TRUE,
     "verificacaoTokenHash"        TEXT,
     "verificacaoTokenExpiresAt"   TIMESTAMP(3)
+);
+
+CREATE TABLE "perfil_permissoes" (
+    "id"         SERIAL PRIMARY KEY,
+    "papel"      "PapelUsuario" NOT NULL,
+    "permissao"  TEXT NOT NULL,
+    "concedida"  BOOLEAN NOT NULL,
+    "updatedAt"  TIMESTAMP(3) NOT NULL,
+    UNIQUE ("papel", "permissao")
 );
 
 CREATE TABLE "categorias" (

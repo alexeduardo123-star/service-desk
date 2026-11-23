@@ -4,6 +4,8 @@ import jwt from "jsonwebtoken";
 import prisma from "../config/prisma.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { enviarEmail } from "../utils/mailer.js";
+import { obterOverrides } from "../utils/permissoesCache.js";
+import { permissoesDoPapel } from "../utils/permissoes.js";
 
 const CODIGO_VALIDADE_MINUTOS = 15;
 
@@ -23,8 +25,17 @@ function gerarToken(usuario) {
   );
 }
 
-function usuarioPublico(usuario) {
-  return { id: usuario.id, nome: usuario.nome, email: usuario.email, papel: usuario.papel };
+// Dados do usuário que vão para o front junto com o token, incluindo as
+// permissões do perfil (o menu e os botões se baseiam nelas).
+async function usuarioPublico(usuario) {
+  const overrides = await obterOverrides();
+  return {
+    id: usuario.id,
+    nome: usuario.nome,
+    email: usuario.email,
+    papel: usuario.papel,
+    permissoes: permissoesDoPapel(usuario.papel, overrides),
+  };
 }
 
 async function enviarCodigoVerificacao(usuario) {
@@ -90,7 +101,7 @@ export const verificarEmail = asyncHandler(async (req, res) => {
   });
 
   const token = gerarToken(usuarioVerificado);
-  res.json({ token, usuario: usuarioPublico(usuarioVerificado) });
+  res.json({ token, usuario: await usuarioPublico(usuarioVerificado) });
 });
 
 export const reenviarVerificacao = asyncHandler(async (req, res) => {
@@ -130,7 +141,7 @@ export const login = asyncHandler(async (req, res) => {
   }
 
   const token = gerarToken(usuario);
-  res.json({ token, usuario: usuarioPublico(usuario) });
+  res.json({ token, usuario: await usuarioPublico(usuario) });
 });
 
 export const esqueciSenha = asyncHandler(async (req, res) => {

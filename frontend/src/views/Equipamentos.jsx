@@ -3,7 +3,7 @@ import CrudTable from "../components/CrudTable";
 import equipamentoService from "../services/equipamentoService";
 import departamentoService from "../services/departamentoService";
 import { useAuth } from "../auth/useAuth";
-import { PapelUsuario } from "../enum/PapelUsuario";
+import { temPermissao } from "../utils/permissoes";
 
 export default function Equipamentos() {
   const [departamentos, setDepartamentos] = useState([]);
@@ -32,7 +32,7 @@ export default function Equipamentos() {
     { key: "numeroSerie", label: "Nº de série" },
   ];
 
-  const podeEscrever = usuario.papel === PapelUsuario.ADMIN || usuario.papel === PapelUsuario.TECNICO;
+  const podeEscrever = temPermissao(usuario, "equipamentos.gerenciar");
 
   return (
     <CrudTable

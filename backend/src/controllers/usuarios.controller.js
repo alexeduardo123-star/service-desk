@@ -1,6 +1,8 @@
 import bcrypt from "bcryptjs";
 import prisma from "../config/prisma.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
+import { obterOverrides } from "../utils/permissoesCache.js";
+import { permissoesDoPapel } from "../utils/permissoes.js";
 
 const semSenha = {
   id: true,
@@ -19,7 +21,8 @@ export const me = asyncHandler(async (req, res) => {
     where: { id: req.user.id },
     select: { ...semSenha, departamento: { select: { id: true, nome: true } } },
   });
-  res.json(usuario);
+  const overrides = await obterOverrides();
+  res.json({ ...usuario, permissoes: permissoesDoPapel(usuario.papel, overrides) });
 });
 
 // O próprio usuário edita nome/telefone/cargo. Papel, email e departamento só

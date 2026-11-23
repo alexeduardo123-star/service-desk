@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import { useAuth } from "../auth/useAuth";
+import { temPermissao } from "../utils/permissoes";
 import AppLayout from "../layouts/AppLayout";
 
 import Login from "../views/Login";
@@ -23,11 +24,13 @@ import Configuracoes from "../views/Configuracoes";
 import Notificacoes from "../views/Notificacoes";
 import Kanban from "../views/Kanban";
 import Relatorios from "../views/Relatorios";
+import PerfisPermissoes from "../views/PerfisPermissoes";
 
-function RotaPrivada({ children, roles }) {
+// permissao: chave de permissão exigida (ver backend/src/utils/permissoes.js).
+function RotaPrivada({ children, permissao }) {
   const { logado, usuario } = useAuth();
   if (!logado) return <Navigate to="/" />;
-  if (roles && !roles.includes(usuario.papel)) return <Navigate to="/home" />;
+  if (permissao && !temPermissao(usuario, permissao)) return <Navigate to="/home" />;
   return children;
 }
 
@@ -57,7 +60,7 @@ export default function AppRoutes() {
         <Route
           path="/relatorios"
           element={
-            <RotaPrivada roles={["ADMIN", "TECNICO"]}>
+            <RotaPrivada permissao="relatorios.ver">
               <Relatorios />
             </RotaPrivada>
           }
@@ -65,7 +68,7 @@ export default function AppRoutes() {
         <Route
           path="/admin/equipamentos"
           element={
-            <RotaPrivada roles={["ADMIN", "TECNICO"]}>
+            <RotaPrivada permissao="equipamentos.gerenciar">
               <Equipamentos />
             </RotaPrivada>
           }
@@ -73,7 +76,7 @@ export default function AppRoutes() {
         <Route
           path="/admin/contratos"
           element={
-            <RotaPrivada roles={["ADMIN", "TECNICO"]}>
+            <RotaPrivada permissao="contratos.ver">
               <Contratos />
             </RotaPrivada>
           }
@@ -81,15 +84,23 @@ export default function AppRoutes() {
         <Route
           path="/admin/usuarios"
           element={
-            <RotaPrivada roles={["ADMIN"]}>
+            <RotaPrivada permissao="usuarios.gerenciar">
               <Usuarios />
+            </RotaPrivada>
+          }
+        />
+        <Route
+          path="/admin/perfis"
+          element={
+            <RotaPrivada permissao="permissoes.gerenciar">
+              <PerfisPermissoes />
             </RotaPrivada>
           }
         />
         <Route
           path="/admin/departamentos"
           element={
-            <RotaPrivada roles={["ADMIN"]}>
+            <RotaPrivada permissao="cadastros.gerenciar">
               <Departamentos />
             </RotaPrivada>
           }
@@ -97,7 +108,7 @@ export default function AppRoutes() {
         <Route
           path="/admin/categorias"
           element={
-            <RotaPrivada roles={["ADMIN"]}>
+            <RotaPrivada permissao="cadastros.gerenciar">
               <Categorias />
             </RotaPrivada>
           }
@@ -105,7 +116,7 @@ export default function AppRoutes() {
         <Route
           path="/admin/prioridades"
           element={
-            <RotaPrivada roles={["ADMIN"]}>
+            <RotaPrivada permissao="cadastros.gerenciar">
               <Prioridades />
             </RotaPrivada>
           }
@@ -113,7 +124,7 @@ export default function AppRoutes() {
         <Route
           path="/admin/servicos"
           element={
-            <RotaPrivada roles={["ADMIN"]}>
+            <RotaPrivada permissao="cadastros.gerenciar">
               <Servicos />
             </RotaPrivada>
           }
@@ -121,7 +132,7 @@ export default function AppRoutes() {
         <Route
           path="/admin/assuntos"
           element={
-            <RotaPrivada roles={["ADMIN"]}>
+            <RotaPrivada permissao="cadastros.gerenciar">
               <Assuntos />
             </RotaPrivada>
           }
@@ -129,7 +140,7 @@ export default function AppRoutes() {
         <Route
           path="/admin/formularios"
           element={
-            <RotaPrivada roles={["ADMIN"]}>
+            <RotaPrivada permissao="cadastros.gerenciar">
               <Formularios />
             </RotaPrivada>
           }

@@ -9,6 +9,7 @@ import { useNotification } from "../store/useNotification";
 import notificacaoService from "../services/notificacaoService";
 import usuarioService from "../services/usuarioService";
 import { PapelUsuario, PAPEL_USUARIO_VALORES } from "../enum/PapelUsuario";
+import { temPermissao } from "../utils/permissoes";
 import { PAPEL_LABEL, TIPO_NOTIFICACAO_COR, TIPO_NOTIFICACAO_LABEL } from "../constants/labels";
 import { formatDate } from "../utils/formatDate";
 import { tempoRelativo } from "../utils/tempoRelativo";
@@ -22,7 +23,7 @@ const OPCOES_TIPO = Object.entries(TIPO_NOTIFICACAO_LABEL).map(([value, label]) 
 export default function Notificacoes() {
   const { usuario } = useAuth();
   const { notificar } = useNotification();
-  const isAdmin = usuario.papel === PapelUsuario.ADMIN;
+  const isAdmin = temPermissao(usuario, "notificacoes.enviar");
 
   const [notificacoes, setNotificacoes] = useState([]);
   const [apenasNaoLidas, setApenasNaoLidas] = useState(false);

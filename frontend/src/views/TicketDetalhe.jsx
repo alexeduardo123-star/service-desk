@@ -7,6 +7,7 @@ import StatusBadge from "../components/StatusBadge";
 import Botao from "../components/Botao";
 import { useAuth } from "../auth/useAuth";
 import { PapelUsuario } from "../enum/PapelUsuario";
+import { temPermissao } from "../utils/permissoes";
 import { STATUS_LABEL } from "../constants/labels";
 import { formatDate } from "../utils/formatDate";
 import { STATUS_SELECIONAVEIS, podeRetomar, podeSuspender } from "../utils/suspensao";
@@ -22,7 +23,7 @@ export default function TicketDetalhe() {
   const [suspendendo, setSuspendendo] = useState(false);
   const [motivo, setMotivo] = useState("");
   const [enviando, setEnviando] = useState(false);
-  const podeGerenciar = usuario.papel === PapelUsuario.ADMIN || usuario.papel === PapelUsuario.TECNICO;
+  const podeGerenciar = temPermissao(usuario, "tickets.tratar");
 
   async function carregar() {
     setTicket(await ticketService.buscar(id));

@@ -82,6 +82,7 @@ teste criados por cada uma.
 Usuários de teste (senha `123456` para todos):
 - `admin@servicedesk.com` (ADMIN)
 - `tecnico@servicedesk.com` (TECNICO)
+- `gestor@servicedesk.com` (GESTOR)
 - `usuario@servicedesk.com` (SOLICITANTE)
 
 ### 3. Frontend

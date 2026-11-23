@@ -10,6 +10,7 @@ datasource db {
 enum PapelUsuario {
   ADMIN
   TECNICO
+  GESTOR
   SOLICITANTE
 }
 
@@ -59,6 +60,20 @@ model Usuario {
   relatoriosSalvos   RelatorioSalvo[]
 
   @@map("usuarios")
+}
+
+// Ajustes de permissão por perfil. As permissões e seus valores padrão ficam no
+// código (src/utils/permissoes.js); esta tabela guarda só o que o administrador
+// liberou ou bloqueou diferente do padrão.
+model PerfilPermissao {
+  id         Int          @id @default(autoincrement())
+  papel      PapelUsuario
+  permissao  String
+  concedida  Boolean
+  updatedAt  DateTime     @updatedAt
+
+  @@unique([papel, permissao])
+  @@map("perfil_permissoes")
 }
 
 model Departamento {
