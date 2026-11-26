@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { deveNotificar, filtrarDestinatarios, notificarUsuarios } from "./notificar.js";
+import { buscarGestoresDoSetor, deveNotificar, filtrarDestinatarios, notificarUsuarios } from "./notificar.js";
 
 function depsFalsas({ configs = [] } = {}) {
   return {
@@ -80,5 +80,33 @@ describe("notificarUsuarios", () => {
     const total = await notificarUsuarios({ destinatarios: [{ id: 2 }], tipo: "SISTEMA", titulo: "t", mensagem: "m" }, deps);
     console.error = spy;
     expect(total).toBe(0);
+  });
+});
+
+describe("buscarGestoresDoSetor", () => {
+  const depsComUsuarios = (...respostas) => {
+    const findMany = vi.fn();
+    for (const r of respostas) findMany.mockResolvedValueOnce(r);
+    return { prisma: { usuario: { findMany } }, findMany };
+  };
+
+  it("devolve os gestores ativos do setor", async () => {
+    const { prisma, findMany } = depsComUsuarios([{ id: 5 }]);
+    const gestores = await buscarGestoresDoSetor(3, { prisma });
+    expect(gestores).toEqual([{ id: 5 }]);
+    expect(findMany).toHaveBeenCalledTimes(1);
+    expect(findMany.mock.calls[0][0].where).toEqual({ papel: "GESTOR", ativo: true, departamentoId: 3 });
+  });
+
+  it("sem gestor no setor, cai para os administradores", async () => {
+    const { prisma, findMany } = depsComUsuarios([], [{ id: 1 }]);
+    expect(await buscarGestoresDoSetor(3, { prisma })).toEqual([{ id: 1 }]);
+    expect(findMany.mock.calls[1][0].where).toEqual({ papel: "ADMIN", ativo: true });
+  });
+
+  it("chamado sem setor vai direto para os administradores", async () => {
+    const { prisma, findMany } = depsComUsuarios([{ id: 1 }]);
+    expect(await buscarGestoresDoSetor(null, { prisma })).toEqual([{ id: 1 }]);
+    expect(findMany).toHaveBeenCalledTimes(1);
   });
 });

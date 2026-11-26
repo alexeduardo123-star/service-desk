@@ -3,7 +3,7 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 
 const include = { ticket: { select: { id: true, titulo: true } } };
 
-const TIPOS = ["TICKET_CRIADO", "TICKET_ATRIBUIDO", "TICKET_STATUS", "TICKET_COMENTARIO", "SISTEMA"];
+const TIPOS = ["TICKET_CRIADO", "TICKET_ATRIBUIDO", "TICKET_STATUS", "TICKET_COMENTARIO", "TICKET_APROVACAO", "SISTEMA"];
 
 // Cada usuário só enxerga e altera as próprias notificações: todas as queries
 // filtram por usuarioId = req.user.id.

@@ -16,6 +16,7 @@ const PADRAO_POR_PAPEL = {
   ],
   [PapelUsuario.GESTOR]: [
     "tickets.tratar",
+    "tickets.aprovar",
     "relatorios.ver",
     "base.gerenciar",
     "fornecedores.ver",

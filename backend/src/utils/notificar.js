@@ -1,5 +1,6 @@
 import prisma from "../config/prisma.js";
 import { enviarEmail } from "./mailer.js";
+import { NOME_APP } from "../config/marca.js";
 
 // Cada tipo automático de notificação é controlado por uma preferência em
 // ConfiguracaoUsuario (tela de Configurações > Notificações). Tipos que não
@@ -54,7 +55,7 @@ export async function notificarUsuarios(
     for (const u of aEntregar) {
       if (u.email && configPorUsuario.get(u.id)?.notificarEmail) {
         deps
-          .enviarEmail({ to: u.email, subject: `${titulo} — FlowDesk`, text: mensagem })
+          .enviarEmail({ to: u.email, subject: `${titulo} — ${NOME_APP}`, text: mensagem })
           .catch((err) => console.error("[notificar] falha ao enviar email:", err.message));
       }
     }
@@ -70,7 +71,23 @@ const SELECT_DESTINATARIO = { id: true, nome: true, email: true, ativo: true };
 // Admins e técnicos ativos (quem precisa saber de chamados novos).
 export function buscarEquipe(deps = { prisma }) {
   return deps.prisma.usuario.findMany({
-    where: { papel: { in: ["ADMIN", "GESTOR", "TECNICO"] }, ativo: true },
+    where: { papel: { in: ["ADMIN", "TECNICO"] }, ativo: true },
+    select: SELECT_DESTINATARIO,
+  });
+}
+
+// Gestores ativos do setor do chamado (quem aprova). Sem setor, ou sem gestor
+// cadastrado nele, o pedido vai para os administradores para não ficar parado.
+export async function buscarGestoresDoSetor(departamentoId, deps = { prisma }) {
+  if (departamentoId) {
+    const gestores = await deps.prisma.usuario.findMany({
+      where: { papel: "GESTOR", ativo: true, departamentoId },
+      select: SELECT_DESTINATARIO,
+    });
+    if (gestores.length > 0) return gestores;
+  }
+  return deps.prisma.usuario.findMany({
+    where: { papel: "ADMIN", ativo: true },
     select: SELECT_DESTINATARIO,
   });
 }

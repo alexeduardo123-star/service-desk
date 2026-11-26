@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { validate } from "../middlewares/validate.js";
-import { alterarStatusSchema, atribuirSchema, suspenderSchema } from "./ticket.schemas.js";
+import { alterarStatusSchema, atribuirSchema, rejeitarSchema, suspenderSchema } from "./ticket.schemas.js";
 
 function run(schema, body) {
   const req = { body };
@@ -56,5 +56,25 @@ describe("atribuirSchema", () => {
   it("rejeita id inválido", () => {
     expect(run(atribuirSchema, { tecnicoId: 0 }).res.status).toHaveBeenCalledWith(400);
     expect(run(atribuirSchema, { tecnicoId: "4" }).res.status).toHaveBeenCalledWith(400);
+  });
+});
+
+describe("rejeitarSchema", () => {
+  it("exige o motivo da rejeição", () => {
+    const { res, next } = run(rejeitarSchema, { motivo: "   " });
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({ erro: "Informe o motivo da rejeição" });
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it("aceita e limpa os espaços do motivo", () => {
+    const { req, next } = run(rejeitarSchema, { motivo: "  sem verba  " });
+    expect(next).toHaveBeenCalled();
+    expect(req.body.motivo).toBe("sem verba");
+  });
+
+  it("limita o tamanho do motivo", () => {
+    const { res } = run(rejeitarSchema, { motivo: "x".repeat(1001) });
+    expect(res.status).toHaveBeenCalledWith(400);
   });
 });

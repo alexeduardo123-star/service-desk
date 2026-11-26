@@ -14,6 +14,14 @@ export const suspenderSchema = z.object({
     .max(1000, "O motivo deve ter no máximo 1000 caracteres"),
 });
 
+export const rejeitarSchema = z.object({
+  motivo: z
+    .string({ message: "Informe o motivo da rejeição" })
+    .trim()
+    .min(1, "Informe o motivo da rejeição")
+    .max(1000, "O motivo deve ter no máximo 1000 caracteres"),
+});
+
 export const atribuirSchema = z.object({
   tecnicoId: z.number({ message: "tecnicoId é obrigatório" }).int().positive("tecnicoId inválido"),
 });

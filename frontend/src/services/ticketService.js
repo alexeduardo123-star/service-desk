@@ -9,5 +9,7 @@ export default {
   alterarStatus: async (id, status) => (await api.patch(`/tickets/${id}/status`, { status })).data,
   suspender: async (id, motivo) => (await api.patch(`/tickets/${id}/suspender`, { motivo })).data,
   retomar: async (id) => (await api.patch(`/tickets/${id}/retomar`)).data,
+  aprovar: async (id) => (await api.patch(`/tickets/${id}/aprovar`)).data,
+  rejeitar: async (id, motivo) => (await api.patch(`/tickets/${id}/rejeitar`, { motivo })).data,
   atribuir: async (id, tecnicoId) => (await api.patch(`/tickets/${id}/atribuir`, { tecnicoId })).data,
 };

@@ -20,6 +20,8 @@ vi.mock("../services/ticketService", () => ({
     atribuir: vi.fn(),
     suspender: vi.fn(),
     retomar: vi.fn(),
+    aprovar: vi.fn(),
+    rejeitar: vi.fn(),
   },
 }));
 
@@ -36,6 +38,7 @@ const { default: TicketDetalhe } = await import("./TicketDetalhe");
 
 const TECNICO = { id: 20, nome: "Téc", papel: "TECNICO" };
 const SOLICITANTE = { id: 10, nome: "Ana", papel: "SOLICITANTE" };
+const GESTOR = { id: 30, nome: "Gê", papel: "GESTOR" };
 
 function chamado(extra = {}) {
   return {
@@ -174,3 +177,72 @@ describe("TicketDetalhe: solicitante", () => {
     expect(screen.queryByRole("button", { name: "Suspender" })).not.toBeInTheDocument();
   });
 });
+
+describe("TicketDetalhe: aprovação do gestor", () => {
+  const pendente = (extra = {}) => chamado({ status: "ABERTO", tecnico: null, aprovacaoStatus: "PENDENTE", ...extra });
+
+  it("mostra o aviso de aprovação pendente e esconde os controles da equipe", async () => {
+    usuarioLogado = TECNICO;
+    ticketService.buscar.mockResolvedValue(pendente());
+    renderizar();
+
+    expect(await screen.findByText(/aguarda a aprovação do gestor/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Suspender" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Aprovar" })).not.toBeInTheDocument();
+  });
+
+  it("o gestor aprova e o chamado é recarregado", async () => {
+    usuarioLogado = GESTOR;
+    ticketService.buscar.mockResolvedValue(pendente());
+    ticketService.aprovar.mockResolvedValue(chamado({ aprovacaoStatus: "APROVADA" }));
+    renderizar();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Aprovar" }));
+
+    await waitFor(() => expect(ticketService.aprovar).toHaveBeenCalledWith("7"));
+    expect(notificar).toHaveBeenCalledWith("Chamado aprovado");
+    await waitFor(() => expect(ticketService.buscar).toHaveBeenCalledTimes(2));
+  });
+
+  it("rejeitar exige o motivo e envia o texto informado", async () => {
+    usuarioLogado = GESTOR;
+    ticketService.buscar.mockResolvedValue(pendente());
+    ticketService.rejeitar.mockResolvedValue(chamado({ aprovacaoStatus: "REJEITADA" }));
+    renderizar();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Rejeitar" }));
+    const confirmar = screen.getByRole("button", { name: "Confirmar rejeição" });
+    expect(confirmar).toBeDisabled();
+
+    fireEvent.change(screen.getByLabelText("Motivo da rejeição"), { target: { value: " sem verba " } });
+    fireEvent.click(confirmar);
+
+    await waitFor(() => expect(ticketService.rejeitar).toHaveBeenCalledWith("7", "sem verba"));
+    expect(notificar).toHaveBeenCalledWith("Chamado rejeitado");
+  });
+
+  it("mostra o erro do servidor quando o gestor não é do setor", async () => {
+    usuarioLogado = GESTOR;
+    ticketService.buscar.mockResolvedValue(pendente());
+    ticketService.aprovar.mockRejectedValue({ response: { data: { erro: "Só o gestor do setor do chamado pode decidir a aprovação" } } });
+    renderizar();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Aprovar" }));
+
+    await waitFor(() =>
+      expect(notificar).toHaveBeenCalledWith("Só o gestor do setor do chamado pode decidir a aprovação", "erro")
+    );
+  });
+
+  it("chamado rejeitado mostra quem rejeitou e o motivo", async () => {
+    usuarioLogado = SOLICITANTE;
+    ticketService.buscar.mockResolvedValue(
+      chamado({ status: "FECHADO", aprovacaoStatus: "REJEITADA", aprovacaoMotivo: "sem verba", aprovador: { nome: "Gê" } })
+    );
+    renderizar();
+
+    expect(await screen.findByText(/Rejeitado por Gê\. Motivo: sem verba/)).toBeInTheDocument();
+  });
+});
+

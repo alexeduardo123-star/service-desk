@@ -17,6 +17,18 @@ export const STATUS_COR = {
   [StatusTicket.FECHADO]: "bg-emerald-100 text-emerald-800",
 };
 
+export const APROVACAO_LABEL = {
+  PENDENTE: "Aguardando aprovação",
+  APROVADA: "Aprovado",
+  REJEITADA: "Rejeitado",
+};
+
+export const APROVACAO_COR = {
+  PENDENTE: "bg-amber-100 text-amber-800",
+  APROVADA: "bg-emerald-100 text-emerald-800",
+  REJEITADA: "bg-red-100 text-red-800",
+};
+
 export const PAPEL_LABEL = {
   [PapelUsuario.ADMIN]: "Administrador",
   [PapelUsuario.TECNICO]: "Técnico",
@@ -29,6 +41,7 @@ export const TIPO_NOTIFICACAO_LABEL = {
   TICKET_ATRIBUIDO: "Atribuição",
   TICKET_STATUS: "Status",
   TICKET_COMENTARIO: "Comentário",
+  TICKET_APROVACAO: "Aprovação",
   SISTEMA: "Comunicado",
 };
 
@@ -37,5 +50,6 @@ export const TIPO_NOTIFICACAO_COR = {
   TICKET_ATRIBUIDO: "bg-purple-100 text-purple-800",
   TICKET_STATUS: "bg-emerald-100 text-emerald-800",
   TICKET_COMENTARIO: "bg-blue-100 text-blue-800",
+  TICKET_APROVACAO: "bg-amber-100 text-amber-800",
   SISTEMA: "bg-gray-200 text-gray-800",
 };

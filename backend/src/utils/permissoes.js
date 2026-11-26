@@ -34,6 +34,11 @@ export const PERMISSOES = {
     grupo: "Chamados",
     padrao: ["TECNICO", "GESTOR"],
   },
+  "tickets.aprovar": {
+    rotulo: "Aprovar ou rejeitar chamados do próprio setor",
+    grupo: "Chamados",
+    padrao: ["GESTOR"],
+  },
   "tickets.excluir": {
     rotulo: "Excluir chamados",
     grupo: "Chamados",

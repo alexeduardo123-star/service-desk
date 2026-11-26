@@ -4,6 +4,8 @@ vi.mock("../config/prisma.js", () => ({
   default: {
     ticket: { findUnique: vi.fn(), update: vi.fn(), create: vi.fn() },
     assunto: { findUnique: vi.fn() },
+    categoria: { findUnique: vi.fn() },
+    usuario: { findUnique: vi.fn() },
     comentario: { create: vi.fn() },
     $transaction: vi.fn(),
   },
@@ -15,11 +17,13 @@ vi.mock("../utils/eventosTicket.js", async (original) => ({
   avisarTicketSuspenso: vi.fn(),
   avisarTicketRetomado: vi.fn(),
   avisarTicketCriado: vi.fn(),
+  avisarAprovacaoPendente: vi.fn(),
+  avisarAprovacaoDecidida: vi.fn(),
 }));
 
 const prisma = (await import("../config/prisma.js")).default;
 const eventos = await import("../utils/eventosTicket.js");
-const { criar, suspender, retomar } = await import("./tickets.controller.js");
+const { criar, suspender, retomar, alterarStatus, atribuir, aprovar, rejeitar } = await import("./tickets.controller.js");
 
 const TECNICO = { id: 20, nome: "Téc", papel: "TECNICO" };
 const TICKET = { id: 7, titulo: "VPN", status: "EM_ANDAMENTO", solicitanteId: 10, tecnicoId: 20 };
@@ -42,6 +46,7 @@ beforeEach(() => {
   prisma.$transaction.mockImplementation((ops) => Promise.all(ops));
   prisma.ticket.update.mockImplementation(({ data }) => Promise.resolve({ ...TICKET, ...data }));
   prisma.comentario.create.mockResolvedValue({ id: 1 });
+  prisma.categoria.findUnique.mockResolvedValue({ exigeAprovacao: false });
 });
 
 describe("tickets.controller: suspender", () => {
@@ -201,5 +206,152 @@ describe("tickets.controller: criar com assunto", () => {
     expect(prisma.ticket.create).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ prioridadeId: 2, assuntoId: null }) })
     );
+  });
+});
+
+describe("tickets.controller: aprovação do gestor", () => {
+  const GESTOR = { id: 30, nome: "Gê", papel: "GESTOR" };
+  const PENDENTE = {
+    ...TICKET,
+    status: "ABERTO",
+    tecnicoId: null,
+    departamentoId: 3,
+    aprovacaoStatus: "PENDENTE",
+    solicitante: { id: 10, nome: "Ana" },
+  };
+  const reqGestor = (body = {}) => ({ params: { id: "7" }, body, user: GESTOR });
+
+  it("categoria que exige aprovação cria o chamado pendente e avisa só os gestores", async () => {
+    prisma.categoria.findUnique.mockResolvedValue({ exigeAprovacao: true });
+    prisma.ticket.create.mockImplementation(({ data }) => Promise.resolve({ id: 9, ...data }));
+    const res = mockRes();
+
+    await criar({ body: { titulo: "Notebook", descricao: "Novo", categoriaId: 8, prioridadeId: 2, departamentoId: 3 }, user: TECNICO }, res, throwingNext);
+
+    expect(prisma.ticket.create.mock.calls[0][0].data.aprovacaoStatus).toBe("PENDENTE");
+    expect(eventos.avisarAprovacaoPendente).toHaveBeenCalledTimes(1);
+    expect(eventos.avisarTicketCriado).not.toHaveBeenCalled();
+  });
+
+  it("categoria comum cria como NAO_EXIGIDA e avisa a equipe", async () => {
+    prisma.ticket.create.mockImplementation(({ data }) => Promise.resolve({ id: 9, ...data }));
+
+    await criar({ body: { titulo: "x", descricao: "y", categoriaId: 1, prioridadeId: 2 }, user: TECNICO }, mockRes(), throwingNext);
+
+    expect(prisma.ticket.create.mock.calls[0][0].data.aprovacaoStatus).toBe("NAO_EXIGIDA");
+    expect(eventos.avisarTicketCriado).toHaveBeenCalledTimes(1);
+    expect(eventos.avisarAprovacaoPendente).not.toHaveBeenCalled();
+  });
+
+  it("enquanto pendente, bloqueia status, atribuição, suspensão e retomada", async () => {
+    prisma.ticket.findUnique.mockResolvedValue(PENDENTE);
+    const chamadas = [
+      () => alterarStatus(req({ status: "EM_ANDAMENTO" }), mockRes(), throwingNext),
+      () => atribuir(req({ tecnicoId: 20 }), mockRes(), throwingNext),
+      () => suspender(req({ motivo: "x" }), mockRes(), throwingNext),
+      () => retomar(req(), mockRes(), throwingNext),
+    ];
+    for (const chamar of chamadas) await chamar();
+
+    expect(prisma.ticket.update).not.toHaveBeenCalled();
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it("alterarStatus devolve 409 e a mensagem quando pendente", async () => {
+    prisma.ticket.findUnique.mockResolvedValue(PENDENTE);
+    const res = mockRes();
+
+    await alterarStatus(req({ status: "EM_ANDAMENTO" }), res, throwingNext);
+
+    expect(res.status).toHaveBeenCalledWith(409);
+    expect(res.json).toHaveBeenCalledWith({ erro: "Chamado aguardando aprovação do gestor" });
+  });
+
+  it("alterarStatus e atribuir seguem normais quando não há aprovação pendente", async () => {
+    prisma.ticket.findUnique.mockResolvedValue({ ...TICKET, aprovacaoStatus: "APROVADA" });
+
+    await alterarStatus(req({ status: "FECHADO" }), mockRes(), throwingNext);
+    await atribuir(req({ tecnicoId: 21 }), mockRes(), throwingNext);
+
+    expect(prisma.ticket.update).toHaveBeenCalledTimes(2);
+  });
+
+  it("gestor do setor aprova: grava aprovador, comenta e avisa solicitante e equipe", async () => {
+    prisma.ticket.findUnique.mockResolvedValue(PENDENTE);
+    prisma.usuario.findUnique.mockResolvedValue({ papel: "GESTOR", departamentoId: 3 });
+    prisma.ticket.update.mockImplementation(({ data }) => Promise.resolve({ ...PENDENTE, ...data }));
+    const res = mockRes();
+
+    await aprovar(reqGestor(), res, throwingNext);
+
+    expect(prisma.ticket.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 7 },
+        data: expect.objectContaining({ aprovacaoStatus: "APROVADA", aprovadorId: 30 }),
+      })
+    );
+    expect(prisma.comentario.create).toHaveBeenCalledWith({
+      data: { ticketId: 7, usuarioId: 30, mensagem: "Chamado aprovado por Gê." },
+    });
+    expect(eventos.avisarAprovacaoDecidida).toHaveBeenCalledWith(expect.anything(), GESTOR, true);
+    expect(eventos.avisarTicketCriado).toHaveBeenCalledWith(expect.anything(), { id: 10, nome: "Ana" });
+    expect(res.status).not.toHaveBeenCalled();
+  });
+
+  it("gestor de outro setor não decide (403) e nada é gravado", async () => {
+    prisma.ticket.findUnique.mockResolvedValue(PENDENTE);
+    prisma.usuario.findUnique.mockResolvedValue({ papel: "GESTOR", departamentoId: 9 });
+    const res = mockRes();
+
+    await aprovar(reqGestor(), res, throwingNext);
+
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(prisma.ticket.update).not.toHaveBeenCalled();
+  });
+
+  it("ADMIN decide chamado de qualquer setor", async () => {
+    prisma.ticket.findUnique.mockResolvedValue(PENDENTE);
+    prisma.usuario.findUnique.mockResolvedValue({ papel: "ADMIN", departamentoId: null });
+
+    await aprovar({ params: { id: "7" }, body: {}, user: { id: 1, nome: "Adm", papel: "ADMIN" } }, mockRes(), throwingNext);
+
+    expect(prisma.ticket.update).toHaveBeenCalledTimes(1);
+  });
+
+  it("não decide chamado que não está pendente (409) nem inexistente (404)", async () => {
+    prisma.ticket.findUnique.mockResolvedValue({ ...PENDENTE, aprovacaoStatus: "APROVADA" });
+    const res = mockRes();
+    await aprovar(reqGestor(), res, throwingNext);
+    expect(res.status).toHaveBeenCalledWith(409);
+
+    prisma.ticket.findUnique.mockResolvedValue(null);
+    const res2 = mockRes();
+    await rejeitar(reqGestor({ motivo: "x" }), res2, throwingNext);
+    expect(res2.status).toHaveBeenCalledWith(404);
+    expect(prisma.ticket.update).not.toHaveBeenCalled();
+  });
+
+  it("rejeitar fecha o chamado, guarda o motivo e avisa o solicitante", async () => {
+    prisma.ticket.findUnique.mockResolvedValue(PENDENTE);
+    prisma.usuario.findUnique.mockResolvedValue({ papel: "GESTOR", departamentoId: 3 });
+    const res = mockRes();
+
+    await rejeitar(reqGestor({ motivo: "sem verba" }), res, throwingNext);
+
+    expect(prisma.ticket.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          aprovacaoStatus: "REJEITADA",
+          aprovacaoMotivo: "sem verba",
+          status: "FECHADO",
+          closedAt: expect.any(Date),
+        }),
+      })
+    );
+    expect(prisma.comentario.create).toHaveBeenCalledWith({
+      data: { ticketId: 7, usuarioId: 30, mensagem: "Chamado rejeitado por Gê. Motivo: sem verba" },
+    });
+    expect(eventos.avisarAprovacaoDecidida).toHaveBeenCalledWith(expect.anything(), GESTOR, false, "sem verba");
+    expect(eventos.avisarTicketCriado).not.toHaveBeenCalled();
   });
 });

@@ -4,6 +4,7 @@ import ticketService from "../services/ticketService";
 import comentarioService from "../services/comentarioService";
 import usuarioService from "../services/usuarioService";
 import StatusBadge from "../components/StatusBadge";
+import AprovacaoBadge from "../components/AprovacaoBadge";
 import Botao from "../components/Botao";
 import { useAuth } from "../auth/useAuth";
 import { PapelUsuario } from "../enum/PapelUsuario";
@@ -11,6 +12,7 @@ import { temPermissao } from "../utils/permissoes";
 import { STATUS_LABEL } from "../constants/labels";
 import { formatDate } from "../utils/formatDate";
 import { STATUS_SELECIONAVEIS, podeRetomar, podeSuspender } from "../utils/suspensao";
+import { aguardandoAprovacao, bloqueadoPorAprovacao, podeDecidirAprovacao } from "../utils/aprovacao";
 import { useNotification } from "../store/useNotification";
 
 export default function TicketDetalhe() {
@@ -23,6 +25,8 @@ export default function TicketDetalhe() {
   const [suspendendo, setSuspendendo] = useState(false);
   const [motivo, setMotivo] = useState("");
   const [enviando, setEnviando] = useState(false);
+  const [rejeitando, setRejeitando] = useState(false);
+  const [motivoRejeicao, setMotivoRejeicao] = useState("");
   const podeGerenciar = temPermissao(usuario, "tickets.tratar");
 
   async function carregar() {
@@ -78,6 +82,39 @@ export default function TicketDetalhe() {
     }
   }
 
+  async function aprovar() {
+    setEnviando(true);
+    try {
+      await ticketService.aprovar(id);
+      notificar("Chamado aprovado");
+      carregar();
+    } catch (err) {
+      notificar(err.response?.data?.erro || "Não foi possível aprovar o chamado", "erro");
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  async function rejeitar(e) {
+    e.preventDefault();
+    if (!motivoRejeicao.trim()) {
+      notificar("Informe o motivo da rejeição", "erro");
+      return;
+    }
+    setEnviando(true);
+    try {
+      await ticketService.rejeitar(id, motivoRejeicao.trim());
+      notificar("Chamado rejeitado");
+      setRejeitando(false);
+      setMotivoRejeicao("");
+      carregar();
+    } catch (err) {
+      notificar(err.response?.data?.erro || "Não foi possível rejeitar o chamado", "erro");
+    } finally {
+      setEnviando(false);
+    }
+  }
+
   function cancelarSuspensao() {
     setSuspendendo(false);
     setMotivo("");
@@ -103,7 +140,10 @@ export default function TicketDetalhe() {
     <div className="mx-auto max-w-2xl">
       <div className="mb-4 flex items-start justify-between">
         <h1 className="text-xl font-semibold text-gray-900">{ticket.titulo}</h1>
-        <StatusBadge status={ticket.status} />
+        <div className="flex flex-col items-end gap-1">
+          <StatusBadge status={ticket.status} />
+          <AprovacaoBadge ticket={ticket} />
+        </div>
       </div>
 
       <div className="mb-6 rounded-lg border border-gray-200 bg-white p-4">
@@ -119,7 +159,48 @@ export default function TicketDetalhe() {
         </div>
       </div>
 
-      {podeGerenciar && (
+      {aguardandoAprovacao(ticket) && (
+        <div role="status" className="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+          <p className="font-medium">Este chamado aguarda a aprovação do gestor do setor.</p>
+          <p className="text-xs">Enquanto isso o atendimento fica parado.</p>
+
+          {podeDecidirAprovacao(usuario, ticket) && !rejeitando && (
+            <div className="mt-3 flex gap-2">
+              <Botao onClick={aprovar} disabled={enviando}>Aprovar</Botao>
+              <Botao variante="perigo" onClick={() => setRejeitando(true)} disabled={enviando}>Rejeitar</Botao>
+            </div>
+          )}
+
+          {rejeitando && (
+            <form onSubmit={rejeitar} className="mt-3 flex flex-col gap-2">
+              <label htmlFor="motivo-rejeicao" className="font-medium">Motivo da rejeição</label>
+              <textarea
+                id="motivo-rejeicao"
+                rows={3}
+                required
+                maxLength={1000}
+                className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900"
+                value={motivoRejeicao}
+                onChange={(e) => setMotivoRejeicao(e.target.value)}
+              />
+              <p className="text-xs">Rejeitar encerra o chamado e o solicitante é avisado com o motivo.</p>
+              <div className="flex gap-2">
+                <Botao type="submit" variante="perigo" disabled={enviando || !motivoRejeicao.trim()}>Confirmar rejeição</Botao>
+                <Botao type="button" variante="secundario" onClick={() => { setRejeitando(false); setMotivoRejeicao(""); }}>Cancelar</Botao>
+              </div>
+            </form>
+          )}
+        </div>
+      )}
+
+      {ticket.aprovacaoStatus === "REJEITADA" && (
+        <div role="status" className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+          Rejeitado por {ticket.aprovador?.nome || "gestor"}
+          {ticket.aprovacaoMotivo ? `. Motivo: ${ticket.aprovacaoMotivo}` : "."}
+        </div>
+      )}
+
+      {podeGerenciar && !bloqueadoPorAprovacao(ticket) && (
         <div className="mb-6 flex flex-wrap items-center gap-3 rounded-lg border border-gray-200 bg-white p-4">
           {podeRetomar(ticket) ? (
             <Botao onClick={retomar} disabled={enviando}>Retomar</Botao>

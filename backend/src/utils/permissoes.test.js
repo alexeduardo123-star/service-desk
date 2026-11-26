@@ -31,6 +31,13 @@ describe("permissoes", () => {
     expect(papelTemPermissao("GESTOR", "tickets.tratar", bloquear)).toBe(true);
   });
 
+  it("só o gestor (e o admin) aprova chamados por padrão", () => {
+    expect(papelTemPermissao("GESTOR", "tickets.aprovar")).toBe(true);
+    expect(papelTemPermissao("TECNICO", "tickets.aprovar")).toBe(false);
+    expect(papelTemPermissao("SOLICITANTE", "tickets.aprovar")).toBe(false);
+    expect(papelTemPermissao("ADMIN", "tickets.aprovar")).toBe(true);
+  });
+
   it("papel ou permissão desconhecidos nunca são autorizados", () => {
     expect(papelTemPermissao("VISITANTE", "tickets.tratar")).toBe(false);
     expect(papelTemPermissao("TECNICO", "naoexiste")).toBe(false);

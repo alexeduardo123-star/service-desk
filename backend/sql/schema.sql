@@ -9,7 +9,8 @@
 
 CREATE TYPE "PapelUsuario" AS ENUM ('ADMIN', 'TECNICO', 'GESTOR', 'SOLICITANTE');
 CREATE TYPE "StatusTicket" AS ENUM ('ABERTO', 'EM_ANDAMENTO', 'AGUARDANDO_USUARIO', 'SUSPENSO', 'FECHADO');
-CREATE TYPE "TipoNotificacao" AS ENUM ('TICKET_CRIADO', 'TICKET_ATRIBUIDO', 'TICKET_STATUS', 'TICKET_COMENTARIO', 'SISTEMA');
+CREATE TYPE "TipoNotificacao" AS ENUM ('TICKET_CRIADO', 'TICKET_ATRIBUIDO', 'TICKET_STATUS', 'TICKET_COMENTARIO', 'TICKET_APROVACAO', 'SISTEMA');
+CREATE TYPE "StatusAprovacao" AS ENUM ('NAO_EXIGIDA', 'PENDENTE', 'APROVADA', 'REJEITADA');
 CREATE TYPE "TipoCampoFormulario" AS ENUM ('TEXTO', 'TEXTO_LONGO', 'NUMERO', 'DATA', 'SELECAO', 'CHECKBOX');
 
 CREATE TABLE "departamentos" (
@@ -48,7 +49,8 @@ CREATE TABLE "perfil_permissoes" (
 CREATE TABLE "categorias" (
     "id"        SERIAL PRIMARY KEY,
     "nome"      TEXT NOT NULL,
-    "descricao" TEXT
+    "descricao" TEXT,
+    "exigeAprovacao" BOOLEAN NOT NULL DEFAULT FALSE
 );
 
 CREATE TABLE "prioridades" (
@@ -81,7 +83,11 @@ CREATE TABLE "tickets" (
     "updatedAt"      TIMESTAMP(3) NOT NULL,
     "closedAt"       TIMESTAMP(3),
     "departamentoId" INTEGER REFERENCES "departamentos" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
-    "assuntoId"      INTEGER  -- FK para assuntos adicionada depois da criação de "assuntos"
+    "assuntoId"      INTEGER,  -- FK para assuntos adicionada depois da criação de "assuntos"
+    "aprovacaoStatus" "StatusAprovacao" NOT NULL DEFAULT 'NAO_EXIGIDA',
+    "aprovadorId"    INTEGER REFERENCES "usuarios" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
+    "aprovacaoEm"    TIMESTAMP(3),
+    "aprovacaoMotivo" TEXT
 );
 
 CREATE TABLE "comentarios" (

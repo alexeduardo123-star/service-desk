@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import AprovacaoBadge from "./AprovacaoBadge";
 import { COR_POR_NIVEL } from "../constants/cores";
 import { STATUS_LABEL } from "../constants/labels";
 import { COLUNAS_KANBAN, slaVencido } from "../utils/kanban";
@@ -29,6 +30,7 @@ export default function KanbanCard({ ticket, podeMover, arrastando, onDragStart,
         <span className="rounded bg-gray-100 px-1.5 py-0.5 text-gray-600">{ticket.categoria?.nome}</span>
         <span className="rounded bg-gray-100 px-1.5 py-0.5 text-gray-600">{ticket.prioridade?.nome}</span>
         {atrasado && <span className="rounded bg-red-100 px-1.5 py-0.5 font-semibold text-red-700">SLA vencido</span>}
+        <AprovacaoBadge ticket={ticket} />
       </div>
 
       <div className="mt-2 text-xs text-gray-500">

@@ -32,6 +32,13 @@ async function main() {
     create: { id: 3, nome: "Rede", descricao: "Conectividade e acesso à rede" },
   });
 
+  // Categoria que exige aprovação do gestor do setor (exemplo da atividade de aprovação).
+  await prisma.categoria.upsert({
+    where: { id: 4 },
+    update: {},
+    create: { id: 4, nome: "Compras e aquisições", descricao: "Pedidos que precisam da aprovação do gestor", exigeAprovacao: true },
+  });
+
   await prisma.prioridade.upsert({
     where: { id: 1 },
     update: {},
@@ -68,7 +75,7 @@ async function main() {
   await prisma.usuario.upsert({
     where: { email: "gestor@servicedesk.com" },
     update: {},
-    create: { nome: "Gestor da Área", email: "gestor@servicedesk.com", senhaHash, papel: "GESTOR", departamentoId: departamentoTI.id },
+    create: { nome: "Gestor da Área", email: "gestor@servicedesk.com", senhaHash, papel: "GESTOR", departamentoId: departamentoFinanceiro.id },
   });
   const solicitante = await prisma.usuario.upsert({
     where: { email: "usuario@servicedesk.com" },

@@ -1,6 +1,6 @@
 import prisma from "../config/prisma.js";
 import { enviarEmail } from "./mailer.js";
-import { buscarEquipe, buscarUsuario, notificarUsuarios } from "./notificar.js";
+import { buscarEquipe, buscarGestoresDoSetor, buscarUsuario, notificarUsuarios } from "./notificar.js";
 
 const STATUS_LABEL = {
   ABERTO: "Aberto",
@@ -185,6 +185,45 @@ export function avisarTicketRetomado(ticket, autor, deps = DEPS_PADRAO) {
         mensagem: `${autor.nome} retomou o atendimento de "${ticket.titulo}".`,
         ticketId: ticket.id,
         autorId: autor.id,
+      },
+      deps
+    );
+  });
+}
+
+// Chamado de categoria com aprovação: avisa os gestores do setor (o time de
+// atendimento só é avisado depois que o gestor aprova).
+export function avisarAprovacaoPendente(ticket, autor, deps = DEPS_PADRAO) {
+  return executar("avisarAprovacaoPendente", async () => {
+    const gestores = await buscarGestoresDoSetor(ticket.departamentoId, deps);
+    await notificarUsuarios(
+      {
+        destinatarios: gestores,
+        tipo: "TICKET_APROVACAO",
+        titulo: `Chamado #${ticket.id} aguarda sua aprovação`,
+        mensagem: `${autor.nome} abriu "${ticket.titulo}" e a categoria exige aprovação do gestor.`,
+        ticketId: ticket.id,
+        autorId: autor.id,
+      },
+      deps
+    );
+  });
+}
+
+// Avisa o solicitante da decisão do gestor (e o motivo, quando rejeitado).
+export function avisarAprovacaoDecidida(ticket, gestor, aprovado, motivo, deps = DEPS_PADRAO) {
+  return executar("avisarAprovacaoDecidida", async () => {
+    const solicitante = await buscarUsuario(ticket.solicitanteId, deps);
+    await notificarUsuarios(
+      {
+        destinatarios: [solicitante],
+        tipo: "TICKET_APROVACAO",
+        titulo: aprovado ? `Chamado #${ticket.id} aprovado` : `Chamado #${ticket.id} rejeitado`,
+        mensagem: aprovado
+          ? `${gestor.nome} aprovou "${ticket.titulo}". Ele segue para atendimento.`
+          : `${gestor.nome} rejeitou "${ticket.titulo}". Motivo: ${motivo}`,
+        ticketId: ticket.id,
+        autorId: gestor.id,
       },
       deps
     );

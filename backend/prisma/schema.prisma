@@ -27,7 +27,17 @@ enum TipoNotificacao {
   TICKET_ATRIBUIDO
   TICKET_STATUS
   TICKET_COMENTARIO
+  TICKET_APROVACAO
   SISTEMA
+}
+
+// Aprovação do gestor do setor. NAO_EXIGIDA: a categoria do chamado não pede
+// aprovação (é o caso da maioria e de todos os chamados antigos).
+enum StatusAprovacao {
+  NAO_EXIGIDA
+  PENDENTE
+  APROVADA
+  REJEITADA
 }
 
 model Usuario {
@@ -52,6 +62,7 @@ model Usuario {
 
   ticketsSolicitados Ticket[]           @relation("TicketSolicitante")
   ticketsAtribuidos  Ticket[]           @relation("TicketTecnico")
+  ticketsAprovados   Ticket[]           @relation("TicketAprovador")
   comentarios        Comentario[]
   equipamentos       Equipamento[]
   artigos            BaseConhecimento[]
@@ -92,6 +103,8 @@ model Categoria {
   id        Int     @id @default(autoincrement())
   nome      String
   descricao String?
+  // Chamados desta categoria só andam depois que o gestor do setor aprova.
+  exigeAprovacao Boolean @default(false)
 
   tickets Ticket[]
   artigos BaseConhecimento[]
@@ -150,6 +163,11 @@ model Ticket {
   // causa dos chamados antigos e dos abertos sem escolher um assunto.
   assuntoId      Int?
   assunto        Assunto?      @relation(fields: [assuntoId], references: [id])
+  aprovacaoStatus StatusAprovacao @default(NAO_EXIGIDA)
+  aprovadorId     Int?
+  aprovador       Usuario?        @relation("TicketAprovador", fields: [aprovadorId], references: [id])
+  aprovacaoEm     DateTime?
+  aprovacaoMotivo String?
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
   closedAt      DateTime?
