@@ -4,6 +4,7 @@ import SituacaoBadge from "../components/SituacaoBadge";
 import assuntoService from "../services/assuntoService";
 import servicoService from "../services/servicoService";
 import formularioService from "../services/formularioService";
+import prioridadeService from "../services/prioridadeService";
 
 // Itens inativos continuam na lista (para não "sumir" na edição), mas sinalizados.
 const opcao = (item) => ({
@@ -14,6 +15,7 @@ const opcao = (item) => ({
 export default function Assuntos() {
   const [servicos, setServicos] = useState([]);
   const [formularios, setFormularios] = useState([]);
+  const [prioridades, setPrioridades] = useState([]);
   const [erroRelacionamentos, setErroRelacionamentos] = useState("");
 
   useEffect(() => {
@@ -21,20 +23,22 @@ export default function Assuntos() {
 
     async function carregarRelacionamentos() {
       try {
-        const [listaServicos, listaFormularios] = await Promise.all([
+        const [listaServicos, listaFormularios, listaPrioridades] = await Promise.all([
           servicoService.listar(),
           formularioService.listar(),
+          prioridadeService.listar(),
         ]);
 
         if (!ativo) return;
 
         setServicos(listaServicos);
         setFormularios(listaFormularios);
+        setPrioridades(listaPrioridades);
         setErroRelacionamentos("");
       } catch {
         if (ativo) {
           setErroRelacionamentos(
-            "Não foi possível carregar serviços e formulários. Atualize a página e tente novamente."
+            "Não foi possível carregar serviços, formulários e prioridades. Atualize a página e tente novamente."
           );
         }
       }
@@ -58,6 +62,14 @@ export default function Assuntos() {
       options: servicos.map(opcao),
     },
     {
+      name: "prioridadeId",
+      label: "Prioridade dos chamados",
+      type: "select",
+      numeric: true,
+      required: true,
+      options: prioridades.map((p) => ({ value: p.id, label: p.nome })),
+    },
+    {
       name: "formularioId",
       label: "Formulário",
       type: "select",
@@ -78,6 +90,7 @@ export default function Assuntos() {
   const colunas = [
     { key: "nome", label: "Assunto" },
     { key: "servico", label: "Serviço", render: (item) => item.servico?.nome || "-" },
+    { key: "prioridade", label: "Prioridade", render: (item) => item.prioridade?.nome || "-" },
     { key: "formulario", label: "Formulário", render: (item) => item.formulario?.nome || "-" },
     { key: "ativo", label: "Situação", render: (item) => <SituacaoBadge ativo={item.ativo} /> },
   ];

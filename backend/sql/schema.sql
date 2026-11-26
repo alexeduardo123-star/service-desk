@@ -80,7 +80,8 @@ CREATE TABLE "tickets" (
     "createdAt"      TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt"      TIMESTAMP(3) NOT NULL,
     "closedAt"       TIMESTAMP(3),
-    "departamentoId" INTEGER REFERENCES "departamentos" ("id") ON DELETE SET NULL ON UPDATE CASCADE
+    "departamentoId" INTEGER REFERENCES "departamentos" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
+    "assuntoId"      INTEGER  -- FK para assuntos adicionada depois da criação de "assuntos"
 );
 
 CREATE TABLE "comentarios" (
@@ -171,10 +172,14 @@ CREATE TABLE "assuntos" (
     "ativo"         BOOLEAN NOT NULL DEFAULT TRUE,
     "servicoId"     INTEGER NOT NULL REFERENCES "servicos" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
     "formularioId"  INTEGER REFERENCES "formularios" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
+    "prioridadeId"  INTEGER REFERENCES "prioridades" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
     "createdAt"     TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt"     TIMESTAMP(3) NOT NULL,
     UNIQUE ("servicoId", "nome")
 );
+
+ALTER TABLE "tickets" ADD CONSTRAINT "tickets_assuntoId_fkey"
+    FOREIGN KEY ("assuntoId") REFERENCES "assuntos" ("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 CREATE INDEX "idx_tickets_solicitante" ON "tickets" ("solicitanteId");
 CREATE INDEX "idx_tickets_tecnico" ON "tickets" ("tecnicoId");
@@ -184,3 +189,5 @@ CREATE INDEX "idx_notificacoes_usuario_lida" ON "notificacoes" ("usuarioId", "li
 CREATE INDEX "idx_relatorios_salvos_usuario" ON "relatorios_salvos" ("usuarioId");
 CREATE INDEX "idx_formulario_campos_formulario" ON "formulario_campos" ("formularioId");
 CREATE INDEX "idx_assuntos_formulario" ON "assuntos" ("formularioId");
+CREATE INDEX "idx_assuntos_prioridade" ON "assuntos" ("prioridadeId");
+CREATE INDEX "idx_tickets_assunto" ON "tickets" ("assuntoId");

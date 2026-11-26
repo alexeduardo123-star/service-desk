@@ -243,8 +243,8 @@ async function main() {
         descricao: "Criação e liberação de acessos a sistemas",
         assuntos: {
           create: [
-            { nome: "Novo acesso a sistema", formularioId: formAcesso.id },
-            { nome: "Redefinição de senha" },
+            { nome: "Novo acesso a sistema", formularioId: formAcesso.id, prioridadeId: prioridadeMedia.id },
+            { nome: "Redefinição de senha", prioridadeId: 1 },
           ],
         },
       },
@@ -255,12 +255,22 @@ async function main() {
         descricao: "Computadores, impressoras e periféricos",
         assuntos: {
           create: [
-            { nome: "Computador com defeito", formularioId: formEquipamento.id },
-            { nome: "Impressora não imprime", formularioId: formEquipamento.id },
+            { nome: "Computador com defeito", formularioId: formEquipamento.id, prioridadeId: 3 },
+            { nome: "Impressora não imprime", formularioId: formEquipamento.id, prioridadeId: prioridadeMedia.id },
           ],
         },
       },
     });
+  }
+
+  // Assuntos cadastrados antes de existir prioridade no assunto ficam com a
+  // prioridade Média, até alguém ajustar na tela. Só preenche o que está vazio.
+  const assuntosSemPrioridade = await prisma.assunto.updateMany({
+    where: { prioridadeId: null },
+    data: { prioridadeId: prioridadeMedia.id },
+  });
+  if (assuntosSemPrioridade.count > 0) {
+    console.log(`Prioridade Média definida em ${assuntosSemPrioridade.count} assunto(s) que estavam sem prioridade.`);
   }
 
   // Chamados criados antes do campo de setor existir (seeds anteriores) ficam

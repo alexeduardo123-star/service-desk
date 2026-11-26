@@ -6,20 +6,24 @@ import prioridadeService from "../services/prioridadeService";
 import equipamentoService from "../services/equipamentoService";
 import departamentoService from "../services/departamentoService";
 import usuarioService from "../services/usuarioService";
+import assuntoService from "../services/assuntoService";
 import InputField from "../components/InputField";
 import Botao from "../components/Botao";
 import { useNotification } from "../store/useNotification";
 import { setorInicial } from "../utils/setor";
+import { opcoesAssunto, prioridadeDoAssunto } from "../utils/assunto";
 
 export default function NovoTicket() {
   const [titulo, setTitulo] = useState("");
   const [descricao, setDescricao] = useState("");
   const [categoriaId, setCategoriaId] = useState("");
+  const [assuntoId, setAssuntoId] = useState("");
   const [prioridadeId, setPrioridadeId] = useState("");
   const [equipamentoId, setEquipamentoId] = useState("");
   const [departamentoId, setDepartamentoId] = useState("");
   const [usuarioSemSetor, setUsuarioSemSetor] = useState(false);
   const [categorias, setCategorias] = useState([]);
+  const [assuntos, setAssuntos] = useState([]);
   const [prioridades, setPrioridades] = useState([]);
   const [equipamentos, setEquipamentos] = useState([]);
   const [departamentos, setDepartamentos] = useState([]);
@@ -30,6 +34,9 @@ export default function NovoTicket() {
   useEffect(() => {
     categoriaService.listar().then(setCategorias);
     prioridadeService.listar().then(setPrioridades);
+    // Sem assuntos cadastrados (ou se a lista falhar) o chamado abre como antes,
+    // escolhendo a prioridade na mão.
+    assuntoService.listar().then(setAssuntos).catch(() => {});
     equipamentoService.listar().then(setEquipamentos);
     departamentoService.listar().then(setDepartamentos);
     // O setor vem do perfil (o usuário guardado no login não tem o setor, e ele
@@ -44,6 +51,15 @@ export default function NovoTicket() {
       .catch(() => setUsuarioSemSetor(true));
   }, []);
 
+  // Com assunto escolhido, a prioridade vem dele e o campo fica travado.
+  const prioridadeDefinidaPeloAssunto = Boolean(prioridadeDoAssunto(assuntos, assuntoId));
+
+  function escolherAssunto(id) {
+    setAssuntoId(id);
+    const daPrioridade = prioridadeDoAssunto(assuntos, id);
+    if (daPrioridade) setPrioridadeId(daPrioridade);
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
     if (!departamentoId) {
@@ -57,6 +73,7 @@ export default function NovoTicket() {
         descricao,
         categoriaId: Number(categoriaId),
         prioridadeId: Number(prioridadeId),
+        assuntoId: assuntoId ? Number(assuntoId) : null,
         equipamentoId: equipamentoId ? Number(equipamentoId) : null,
         departamentoId: Number(departamentoId),
       });
@@ -87,6 +104,22 @@ export default function NovoTicket() {
           />
         </label>
 
+        {assuntos.length > 0 && (
+          <label className="flex flex-col gap-1 text-sm text-gray-700">
+            <span className="font-medium">Assunto</span>
+            <select
+              className="rounded-md border border-gray-300 px-3 py-2 text-sm"
+              value={assuntoId}
+              onChange={(e) => escolherAssunto(e.target.value)}
+            >
+              <option value="">Selecione…</option>
+              {opcoesAssunto(assuntos).map((o) => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
+          </label>
+        )}
+
         <label className="flex flex-col gap-1 text-sm text-gray-700">
           <span className="font-medium">Categoria</span>
           <select className="rounded-md border border-gray-300 px-3 py-2 text-sm" value={categoriaId} onChange={(e) => setCategoriaId(e.target.value)} required>
@@ -99,12 +132,21 @@ export default function NovoTicket() {
 
         <label className="flex flex-col gap-1 text-sm text-gray-700">
           <span className="font-medium">Prioridade</span>
-          <select className="rounded-md border border-gray-300 px-3 py-2 text-sm" value={prioridadeId} onChange={(e) => setPrioridadeId(e.target.value)} required>
+          <select
+            className="rounded-md border border-gray-300 px-3 py-2 text-sm disabled:bg-gray-100"
+            value={prioridadeId}
+            onChange={(e) => setPrioridadeId(e.target.value)}
+            disabled={prioridadeDefinidaPeloAssunto}
+            required
+          >
             <option value="">Selecione…</option>
             {prioridades.map((p) => (
               <option key={p.id} value={p.id}>{p.nome}</option>
             ))}
           </select>
+          {prioridadeDefinidaPeloAssunto && (
+            <span className="text-xs text-gray-500">Definida pelo assunto escolhido.</span>
+          )}
         </label>
 
         <label className="flex flex-col gap-1 text-sm text-gray-700">

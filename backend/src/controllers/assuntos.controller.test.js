@@ -11,6 +11,7 @@ vi.mock("../config/prisma.js", () => ({
     },
     servico: { findUnique: vi.fn() },
     formulario: { findUnique: vi.fn() },
+    prioridade: { findUnique: vi.fn() },
   },
 }));
 
@@ -61,8 +62,9 @@ describe("assuntos.controller", () => {
   });
 
   it("cria assunto vinculado a serviço e formulário existentes", async () => {
-    const dados = { nome: "Novo acesso", servicoId: 1, formularioId: 2, descricao: null, ativo: true };
+    const dados = { nome: "Novo acesso", servicoId: 1, formularioId: 2, prioridadeId: 3, descricao: null, ativo: true };
     prisma.servico.findUnique.mockResolvedValue({ id: 1 });
+    prisma.prioridade.findUnique.mockResolvedValue({ id: 3 });
     prisma.formulario.findUnique.mockResolvedValue({ id: 2 });
     prisma.assunto.create.mockResolvedValue({ id: 10, ...dados });
 
@@ -77,7 +79,7 @@ describe("assuntos.controller", () => {
     prisma.servico.findUnique.mockResolvedValue(null);
 
     const res = mockRes();
-    await criar({ body: { nome: "X", servicoId: 9, formularioId: null } }, res, throwingNext);
+    await criar({ body: { nome: "X", servicoId: 9, prioridadeId: 1, formularioId: null } }, res, throwingNext);
 
     expect(res.status).toHaveBeenCalledWith(400);
     expect(res.json).toHaveBeenCalledWith({ erro: "Serviço não encontrado" });
@@ -86,12 +88,34 @@ describe("assuntos.controller", () => {
 
   it("não vincula formulário inexistente", async () => {
     prisma.servico.findUnique.mockResolvedValue({ id: 1 });
+    prisma.prioridade.findUnique.mockResolvedValue({ id: 1 });
     prisma.formulario.findUnique.mockResolvedValue(null);
 
     const res = mockRes();
-    await atualizar({ params: { id: "1" }, body: { nome: "X", servicoId: 1, formularioId: 7 } }, res, throwingNext);
+    await atualizar({ params: { id: "1" }, body: { nome: "X", servicoId: 1, prioridadeId: 1, formularioId: 7 } }, res, throwingNext);
 
     expect(res.json).toHaveBeenCalledWith({ erro: "Formulário não encontrado" });
     expect(prisma.assunto.update).not.toHaveBeenCalled();
+  });
+
+  it("não cria assunto com prioridade inexistente", async () => {
+    prisma.servico.findUnique.mockResolvedValue({ id: 1 });
+    prisma.prioridade.findUnique.mockResolvedValue(null);
+
+    const res = mockRes();
+    await criar({ body: { nome: "X", servicoId: 1, prioridadeId: 99, formularioId: null } }, res, throwingNext);
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({ erro: "Prioridade não encontrada" });
+    expect(prisma.assunto.create).not.toHaveBeenCalled();
+  });
+
+  it("devolve a prioridade junto com o assunto na listagem", async () => {
+    prisma.assunto.findMany.mockResolvedValue([]);
+
+    await listar({ query: {} }, mockRes(), throwingNext);
+
+    const chamada = prisma.assunto.findMany.mock.calls[0][0];
+    expect(chamada.include.prioridade).toBeDefined();
   });
 });

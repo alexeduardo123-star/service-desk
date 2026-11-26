@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { assuntoSchema } from "./assunto.schema.js";
 
-const assuntoValido = { nome: "Instalação de software", servicoId: 1 };
+const assuntoValido = { nome: "Instalação de software", servicoId: 1, prioridadeId: 2 };
 
 describe("assuntoSchema", () => {
   it("aceita assunto sem formulário vinculado", () => {
@@ -32,5 +32,19 @@ describe("assuntoSchema", () => {
     const resultado = assuntoSchema.safeParse({ ...assuntoValido, servicoId: 0 });
     expect(resultado.success).toBe(false);
     expect(resultado.error.issues[0].message).toBe("Selecione um serviço");
+  });
+
+  it("exige a prioridade do assunto", () => {
+    const { prioridadeId, ...semPrioridade } = assuntoValido;
+    const resultado = assuntoSchema.safeParse(semPrioridade);
+    expect(resultado.success).toBe(false);
+    expect(prioridadeId).toBe(2);
+    expect(resultado.error.issues[0].message).toBe("Selecione a prioridade");
+  });
+
+  it("converte a prioridade em número e rejeita valor inválido", () => {
+    expect(assuntoSchema.safeParse({ ...assuntoValido, prioridadeId: "3" }).data.prioridadeId).toBe(3);
+    expect(assuntoSchema.safeParse({ ...assuntoValido, prioridadeId: 0 }).success).toBe(false);
+    expect(assuntoSchema.safeParse({ ...assuntoValido, prioridadeId: "" }).success).toBe(false);
   });
 });

@@ -4,13 +4,17 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 const relacoes = {
   servico: { select: { id: true, nome: true } },
   formulario: { select: { id: true, nome: true } },
+  prioridade: { select: { id: true, nome: true, nivel: true, slaHoras: true } },
 };
 
 // Confere se o serviço e o formulário informados existem antes de gravar,
 // para devolver uma mensagem clara em vez do erro genérico de chave estrangeira.
-async function validarVinculos({ servicoId, formularioId }) {
+async function validarVinculos({ servicoId, formularioId, prioridadeId }) {
   const servico = await prisma.servico.findUnique({ where: { id: servicoId }, select: { id: true } });
   if (!servico) return "Serviço não encontrado";
+
+  const prioridade = await prisma.prioridade.findUnique({ where: { id: prioridadeId }, select: { id: true } });
+  if (!prioridade) return "Prioridade não encontrada";
 
   if (formularioId) {
     const formulario = await prisma.formulario.findUnique({ where: { id: formularioId }, select: { id: true } });
@@ -44,6 +48,7 @@ export const buscar = asyncHandler(async (req, res) => {
     where: { id: Number(req.params.id) },
     include: {
       servico: { select: { id: true, nome: true } },
+      prioridade: { select: { id: true, nome: true, nivel: true, slaHoras: true } },
       formulario: { include: { campos: { orderBy: { ordem: "asc" } } } },
     },
   });

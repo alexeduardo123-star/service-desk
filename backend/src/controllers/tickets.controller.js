@@ -19,6 +19,7 @@ const include = {
   prioridade: true,
   equipamento: true,
   departamento: true,
+  assunto: { select: { id: true, nome: true } },
 };
 
 function podeVer(ticket, user) {
@@ -43,13 +44,28 @@ export const buscar = asyncHandler(async (req, res) => {
 });
 
 export const criar = asyncHandler(async (req, res) => {
-  const { titulo, descricao, categoriaId, prioridadeId, equipamentoId, departamentoId } = req.body;
+  const { titulo, descricao, categoriaId, equipamentoId, departamentoId, assuntoId } = req.body;
+  let { prioridadeId } = req.body;
+
+  // Com assunto escolhido, a prioridade é a cadastrada nele (o que veio do
+  // cliente é ignorado). Sem assunto, vale a prioridade informada.
+  if (assuntoId) {
+    const assunto = await prisma.assunto.findUnique({
+      where: { id: assuntoId },
+      select: { id: true, ativo: true, prioridadeId: true },
+    });
+    if (!assunto || !assunto.ativo) return res.status(400).json({ erro: "Assunto inválido ou inativo" });
+    prioridadeId = assunto.prioridadeId ?? prioridadeId;
+  }
+  if (!prioridadeId) return res.status(400).json({ erro: "Informe a prioridade do chamado" });
+
   const ticket = await prisma.ticket.create({
     data: {
       titulo,
       descricao,
       categoriaId,
       prioridadeId,
+      assuntoId: assuntoId || null,
       equipamentoId: equipamentoId || null,
       departamentoId: departamentoId || null,
       solicitanteId: req.user.id,

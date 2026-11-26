@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 vi.mock("../config/prisma.js", () => ({
   default: {
     ticket: { findUnique: vi.fn(), update: vi.fn(), create: vi.fn() },
+    assunto: { findUnique: vi.fn() },
     comentario: { create: vi.fn() },
     $transaction: vi.fn(),
   },
@@ -140,5 +141,65 @@ describe("tickets.controller: criar com setor", () => {
     await criar({ body: NOVO, user: TECNICO }, mockRes(), throwingNext);
 
     expect(prisma.ticket.create.mock.calls[0][0].data.departamentoId).toBeNull();
+  });
+});
+
+describe("tickets.controller: criar com assunto", () => {
+  const NOVO = { titulo: "VPN", descricao: "Não conecta", categoriaId: 1, prioridadeId: 2, assuntoId: 5 };
+
+  beforeEach(() => {
+    prisma.ticket.create.mockImplementation(async ({ data }) => ({ id: 50, ...data }));
+  });
+
+  it("usa a prioridade cadastrada no assunto, ignorando a enviada", async () => {
+    prisma.assunto.findUnique.mockResolvedValue({ id: 5, ativo: true, prioridadeId: 4 });
+    const res = mockRes();
+
+    await criar({ body: NOVO, user: TECNICO }, res, throwingNext);
+
+    expect(prisma.ticket.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ prioridadeId: 4, assuntoId: 5 }) })
+    );
+    expect(res.status).toHaveBeenCalledWith(201);
+  });
+
+  it("se o assunto não tem prioridade (cadastro antigo), usa a informada", async () => {
+    prisma.assunto.findUnique.mockResolvedValue({ id: 5, ativo: true, prioridadeId: null });
+
+    await criar({ body: NOVO, user: TECNICO }, mockRes(), throwingNext);
+
+    expect(prisma.ticket.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ prioridadeId: 2, assuntoId: 5 }) })
+    );
+  });
+
+  it("recusa assunto inexistente ou inativo", async () => {
+    for (const assunto of [null, { id: 5, ativo: false, prioridadeId: 4 }]) {
+      prisma.assunto.findUnique.mockResolvedValue(assunto);
+      const res = mockRes();
+
+      await criar({ body: NOVO, user: TECNICO }, res, throwingNext);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+    }
+    expect(prisma.ticket.create).not.toHaveBeenCalled();
+  });
+
+  it("sem assunto continua exigindo a prioridade", async () => {
+    const res = mockRes();
+
+    await criar({ body: { titulo: "x", descricao: "y", categoriaId: 1 }, user: TECNICO }, res, throwingNext);
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(prisma.ticket.create).not.toHaveBeenCalled();
+  });
+
+  it("sem assunto grava assuntoId null e mantém a prioridade informada", async () => {
+    await criar({ body: { ...NOVO, assuntoId: undefined }, user: TECNICO }, mockRes(), throwingNext);
+
+    expect(prisma.assunto.findUnique).not.toHaveBeenCalled();
+    expect(prisma.ticket.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ prioridadeId: 2, assuntoId: null }) })
+    );
   });
 });

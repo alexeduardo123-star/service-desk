@@ -20,6 +20,7 @@ vi.mock("../services/prioridadeService", () => ({ default: { listar: vi.fn() } }
 vi.mock("../services/equipamentoService", () => ({ default: { listar: vi.fn() } }));
 vi.mock("../services/departamentoService", () => ({ default: { listar: vi.fn() } }));
 vi.mock("../services/usuarioService", () => ({ default: { me: vi.fn() } }));
+vi.mock("../services/assuntoService", () => ({ default: { listar: vi.fn() } }));
 
 const ticketService = (await import("../services/ticketService")).default;
 const categoriaService = (await import("../services/categoriaService")).default;
@@ -27,6 +28,7 @@ const prioridadeService = (await import("../services/prioridadeService")).defaul
 const equipamentoService = (await import("../services/equipamentoService")).default;
 const departamentoService = (await import("../services/departamentoService")).default;
 const usuarioService = (await import("../services/usuarioService")).default;
+const assuntoService = (await import("../services/assuntoService")).default;
 const { default: NovoTicket } = await import("./NovoTicket");
 
 const SETORES = [
@@ -57,6 +59,7 @@ beforeEach(() => {
   prioridadeService.listar.mockResolvedValue([{ id: 6, nome: "Média" }]);
   equipamentoService.listar.mockResolvedValue([]);
   departamentoService.listar.mockResolvedValue(SETORES);
+  assuntoService.listar.mockResolvedValue([]);
   ticketService.criar.mockResolvedValue({ id: 99 });
 });
 
@@ -125,5 +128,64 @@ describe("NovoTicket: setor", () => {
     await waitFor(() => expect(usuarioService.me).toHaveBeenCalled());
     await Promise.resolve();
     expect(campoSetor()).toHaveValue("1");
+  });
+});
+
+describe("NovoTicket: assunto", () => {
+  const ASSUNTOS = [
+    { id: 8, nome: "Novo acesso", ativo: true, servico: { nome: "Acessos" }, prioridadeId: 7 },
+    { id: 9, nome: "Antigo", ativo: false, servico: { nome: "Acessos" }, prioridadeId: 6 },
+  ];
+
+  beforeEach(() => {
+    usuarioService.me.mockResolvedValue({ id: 10, departamentoId: 2 });
+    prioridadeService.listar.mockResolvedValue([
+      { id: 6, nome: "Média" },
+      { id: 7, nome: "Alta" },
+    ]);
+    assuntoService.listar.mockResolvedValue(ASSUNTOS);
+  });
+
+  it("sem assuntos cadastrados não mostra o seletor", async () => {
+    assuntoService.listar.mockResolvedValue([]);
+    renderizar();
+
+    await waitFor(() => expect(campoSetor()).toHaveValue("2"));
+    expect(screen.queryByRole("combobox", { name: "Assunto" })).not.toBeInTheDocument();
+  });
+
+  it("lista só assuntos ativos", async () => {
+    renderizar();
+
+    expect(await screen.findByRole("option", { name: "Acessos — Novo acesso" })).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: /Antigo/ })).not.toBeInTheDocument();
+  });
+
+  it("ao escolher o assunto, a prioridade vem dele e o campo trava", async () => {
+    renderizar();
+    await screen.findByRole("option", { name: "Acessos — Novo acesso" });
+
+    fireEvent.change(screen.getByRole("combobox", { name: "Assunto" }), { target: { value: "8" } });
+
+    const prioridade = screen.getByRole("combobox", { name: "Prioridade" });
+    expect(prioridade).toHaveValue("7");
+    expect(prioridade).toBeDisabled();
+  });
+
+  it("envia o assunto escolhido ao abrir o chamado", async () => {
+    renderizar();
+    await screen.findByRole("option", { name: "Acessos — Novo acesso" });
+    await waitFor(() => expect(campoSetor()).toHaveValue("2"));
+
+    fireEvent.change(screen.getByLabelText("Título"), { target: { value: "Acesso ERP" } });
+    fireEvent.change(screen.getByLabelText("Descrição"), { target: { value: "Preciso do ERP" } });
+    fireEvent.change(screen.getByRole("combobox", { name: "Categoria" }), { target: { value: "5" } });
+    fireEvent.change(screen.getByRole("combobox", { name: "Assunto" }), { target: { value: "8" } });
+    fireEvent.click(screen.getByRole("button", { name: "Abrir chamado" }));
+
+    await waitFor(() => expect(ticketService.criar).toHaveBeenCalled());
+    expect(ticketService.criar).toHaveBeenCalledWith(
+      expect.objectContaining({ assuntoId: 8, prioridadeId: 7, departamentoId: 2 })
+    );
   });
 });

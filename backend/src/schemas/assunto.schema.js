@@ -20,5 +20,10 @@ export const assuntoSchema = z.object({
     .nullable()
     .optional()
     .transform((valor) => valor ?? null),
+  // Prioridade que os chamados abertos com este assunto vão receber.
+  prioridadeId: z.coerce
+    .number({ message: "Selecione a prioridade" })
+    .int("Selecione a prioridade")
+    .positive("Selecione a prioridade"),
   ativo: z.boolean().optional().default(true),
 });

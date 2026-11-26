@@ -105,7 +105,8 @@ model Prioridade {
   nivel    Int
   slaHoras Int
 
-  tickets Ticket[]
+  tickets  Ticket[]
+  assuntos Assunto[]
 
   @@map("prioridades")
 }
@@ -145,6 +146,10 @@ model Ticket {
   // no banco por causa dos chamados antigos; pela tela é sempre informado.
   departamentoId Int?
   departamento   Departamento? @relation(fields: [departamentoId], references: [id])
+  // Assunto escolhido ao abrir o chamado (define a prioridade). Opcional por
+  // causa dos chamados antigos e dos abertos sem escolher um assunto.
+  assuntoId      Int?
+  assunto        Assunto?      @relation(fields: [assuntoId], references: [id])
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
   closedAt      DateTime?
@@ -296,11 +301,18 @@ model Assunto {
   servico      Servico     @relation(fields: [servicoId], references: [id], onDelete: Restrict)
   formularioId Int?
   formulario   Formulario? @relation(fields: [formularioId], references: [id], onDelete: Restrict)
+  // Prioridade que os chamados abertos com este assunto recebem. Opcional no
+  // banco por causa dos assuntos antigos; o cadastro (API/tela) exige.
+  prioridadeId Int?
+  prioridade   Prioridade? @relation(fields: [prioridadeId], references: [id], onDelete: Restrict)
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
 
+  tickets Ticket[]
+
   @@unique([servicoId, nome])
   @@index([formularioId])
+  @@index([prioridadeId])
   @@map("assuntos")
 }
 
