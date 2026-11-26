@@ -168,6 +168,9 @@ model Ticket {
   aprovador       Usuario?        @relation("TicketAprovador", fields: [aprovadorId], references: [id])
   aprovacaoEm     DateTime?
   aprovacaoMotivo String?
+  // Respostas do formulário do assunto: [{ campoId, rotulo, tipo, valor }]. O
+  // rótulo é copiado para o histórico não mudar se o formulário for editado depois.
+  respostasFormulario Json?
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
   closedAt      DateTime?

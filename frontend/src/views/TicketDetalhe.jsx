@@ -12,6 +12,7 @@ import { temPermissao } from "../utils/permissoes";
 import { STATUS_LABEL } from "../constants/labels";
 import { formatDate } from "../utils/formatDate";
 import { STATUS_SELECIONAVEIS, podeRetomar, podeSuspender } from "../utils/suspensao";
+import { formatarResposta } from "../utils/respostasFormulario";
 import { aguardandoAprovacao, bloqueadoPorAprovacao, podeDecidirAprovacao } from "../utils/aprovacao";
 import { useNotification } from "../store/useNotification";
 
@@ -158,6 +159,22 @@ export default function TicketDetalhe() {
           {ticket.closedAt && <span>Fechado em: {formatDate(ticket.closedAt)}</span>}
         </div>
       </div>
+
+      {ticket.respostasFormulario?.length > 0 && (
+        <section className="mb-6 rounded-lg border border-gray-200 bg-white p-4" aria-label="Dados do formulário">
+          <h2 className="mb-2 text-sm font-semibold text-gray-900">
+            Informações do assunto{ticket.assunto ? `: ${ticket.assunto.nome}` : ""}
+          </h2>
+          <dl className="grid grid-cols-1 gap-x-4 gap-y-2 text-sm sm:grid-cols-2">
+            {ticket.respostasFormulario.map((r) => (
+              <div key={r.campoId}>
+                <dt className="text-xs text-gray-500">{r.rotulo}</dt>
+                <dd className="text-gray-800">{formatarResposta(r)}</dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+      )}
 
       {aguardandoAprovacao(ticket) && (
         <div role="status" className="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">

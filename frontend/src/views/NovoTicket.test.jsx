@@ -20,7 +20,7 @@ vi.mock("../services/prioridadeService", () => ({ default: { listar: vi.fn() } }
 vi.mock("../services/equipamentoService", () => ({ default: { listar: vi.fn() } }));
 vi.mock("../services/departamentoService", () => ({ default: { listar: vi.fn() } }));
 vi.mock("../services/usuarioService", () => ({ default: { me: vi.fn() } }));
-vi.mock("../services/assuntoService", () => ({ default: { listar: vi.fn() } }));
+vi.mock("../services/assuntoService", () => ({ default: { listar: vi.fn(), buscar: vi.fn() } }));
 
 const ticketService = (await import("../services/ticketService")).default;
 const categoriaService = (await import("../services/categoriaService")).default;
@@ -144,6 +144,7 @@ describe("NovoTicket: assunto", () => {
       { id: 7, nome: "Alta" },
     ]);
     assuntoService.listar.mockResolvedValue(ASSUNTOS);
+    assuntoService.buscar.mockResolvedValue({ id: 8, formulario: null });
   });
 
   it("sem assuntos cadastrados não mostra o seletor", async () => {
@@ -189,3 +190,75 @@ describe("NovoTicket: assunto", () => {
     );
   });
 });
+
+describe("NovoTicket: formulário do assunto", () => {
+  const CAMPOS = [
+    { id: 31, rotulo: "Sistema", tipo: "SELECAO", obrigatorio: true, opcoes: ["ERP", "CRM"] },
+    { id: 32, rotulo: "Justificativa", tipo: "TEXTO_LONGO", obrigatorio: false, opcoes: [] },
+  ];
+
+  beforeEach(() => {
+    usuarioService.me.mockResolvedValue({ id: 10, departamentoId: 2 });
+    prioridadeService.listar.mockResolvedValue([{ id: 7, nome: "Alta" }]);
+    assuntoService.listar.mockResolvedValue([
+      { id: 8, nome: "Novo acesso", ativo: true, servico: { nome: "Acessos" }, prioridadeId: 7 },
+    ]);
+    assuntoService.buscar.mockResolvedValue({ id: 8, formulario: { ativo: true, campos: CAMPOS } });
+  });
+
+  async function escolherAssuntoComFormulario() {
+    renderizar();
+    await screen.findByRole("option", { name: "Acessos — Novo acesso" });
+    await waitFor(() => expect(campoSetor()).toHaveValue("2"));
+    fireEvent.change(screen.getByRole("combobox", { name: "Assunto" }), { target: { value: "8" } });
+    await screen.findByLabelText(/Sistema/);
+  }
+
+  function preencherBasico() {
+    fireEvent.change(screen.getByLabelText("Título"), { target: { value: "Acesso ERP" } });
+    fireEvent.change(screen.getByLabelText("Descrição"), { target: { value: "Preciso do ERP" } });
+    fireEvent.change(screen.getByRole("combobox", { name: "Categoria" }), { target: { value: "5" } });
+  }
+
+  it("mostra os campos do formulário ao escolher o assunto", async () => {
+    await escolherAssuntoComFormulario();
+
+    expect(assuntoService.buscar).toHaveBeenCalledWith("8");
+    expect(screen.getByLabelText(/Justificativa/)).toBeInTheDocument();
+  });
+
+  it("não deixa abrir o chamado sem preencher o campo obrigatório", async () => {
+    await escolherAssuntoComFormulario();
+    preencherBasico();
+
+    fireEvent.click(screen.getByRole("button", { name: "Abrir chamado" }));
+
+    expect(notificar).toHaveBeenCalledWith('Preencha o campo "Sistema"', "erro");
+    expect(ticketService.criar).not.toHaveBeenCalled();
+  });
+
+  it("envia as respostas junto com o chamado", async () => {
+    await escolherAssuntoComFormulario();
+    preencherBasico();
+    fireEvent.change(screen.getByLabelText(/Sistema/), { target: { value: "ERP" } });
+    fireEvent.change(screen.getByLabelText(/Justificativa/), { target: { value: "Novo cargo" } });
+
+    fireEvent.click(screen.getByRole("button", { name: "Abrir chamado" }));
+
+    await waitFor(() => expect(ticketService.criar).toHaveBeenCalled());
+    expect(ticketService.criar.mock.calls[0][0]).toMatchObject({
+      assuntoId: 8,
+      respostas: { 31: "ERP", 32: "Novo cargo" },
+    });
+  });
+
+  it("trocar para um assunto sem formulário remove os campos", async () => {
+    await escolherAssuntoComFormulario();
+
+    assuntoService.buscar.mockResolvedValue({ id: 9, formulario: null });
+    fireEvent.change(screen.getByRole("combobox", { name: "Assunto" }), { target: { value: "" } });
+
+    await waitFor(() => expect(screen.queryByLabelText(/Sistema/)).not.toBeInTheDocument());
+  });
+});
+

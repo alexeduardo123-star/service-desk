@@ -11,13 +11,17 @@ import InputField from "../components/InputField";
 import Botao from "../components/Botao";
 import { useNotification } from "../store/useNotification";
 import { setorInicial } from "../utils/setor";
+import FormularioPreenchimento from "../components/FormularioPreenchimento";
 import { opcoesAssunto, prioridadeDoAssunto } from "../utils/assunto";
+import { respostasIniciais, validarRespostas } from "../utils/respostasFormulario";
 
 export default function NovoTicket() {
   const [titulo, setTitulo] = useState("");
   const [descricao, setDescricao] = useState("");
   const [categoriaId, setCategoriaId] = useState("");
   const [assuntoId, setAssuntoId] = useState("");
+  const [camposFormulario, setCamposFormulario] = useState([]);
+  const [respostas, setRespostas] = useState({});
   const [prioridadeId, setPrioridadeId] = useState("");
   const [equipamentoId, setEquipamentoId] = useState("");
   const [departamentoId, setDepartamentoId] = useState("");
@@ -58,12 +62,30 @@ export default function NovoTicket() {
     setAssuntoId(id);
     const daPrioridade = prioridadeDoAssunto(assuntos, id);
     if (daPrioridade) setPrioridadeId(daPrioridade);
+
+    // O formulário do assunto (se tiver) aparece assim que ele é escolhido.
+    setCamposFormulario([]);
+    setRespostas({});
+    if (!id) return;
+    assuntoService
+      .buscar(id)
+      .then((assunto) => {
+        const campos = assunto?.formulario?.ativo === false ? [] : (assunto?.formulario?.campos ?? []);
+        setCamposFormulario(campos);
+        setRespostas(respostasIniciais(campos));
+      })
+      .catch(() => notificar("Não foi possível carregar o formulário do assunto", "erro"));
   }
 
   async function handleSubmit(e) {
     e.preventDefault();
     if (!departamentoId) {
       notificar("Escolha o setor do chamado", "erro");
+      return;
+    }
+    const erroFormulario = validarRespostas(camposFormulario, respostas);
+    if (erroFormulario) {
+      notificar(erroFormulario, "erro");
       return;
     }
     setEnviando(true);
@@ -74,6 +96,7 @@ export default function NovoTicket() {
         categoriaId: Number(categoriaId),
         prioridadeId: Number(prioridadeId),
         assuntoId: assuntoId ? Number(assuntoId) : null,
+        respostas: camposFormulario.length > 0 ? respostas : undefined,
         equipamentoId: equipamentoId ? Number(equipamentoId) : null,
         departamentoId: Number(departamentoId),
       });
@@ -119,6 +142,12 @@ export default function NovoTicket() {
             </select>
           </label>
         )}
+
+        <FormularioPreenchimento
+          campos={camposFormulario}
+          valores={respostas}
+          onChange={(campoId, valor) => setRespostas((atual) => ({ ...atual, [campoId]: valor }))}
+        />
 
         <label className="flex flex-col gap-1 text-sm text-gray-700">
           <span className="font-medium">Categoria</span>

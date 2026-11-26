@@ -87,7 +87,8 @@ CREATE TABLE "tickets" (
     "aprovacaoStatus" "StatusAprovacao" NOT NULL DEFAULT 'NAO_EXIGIDA',
     "aprovadorId"    INTEGER REFERENCES "usuarios" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
     "aprovacaoEm"    TIMESTAMP(3),
-    "aprovacaoMotivo" TEXT
+    "aprovacaoMotivo" TEXT,
+    "respostasFormulario" JSONB
 );
 
 CREATE TABLE "comentarios" (

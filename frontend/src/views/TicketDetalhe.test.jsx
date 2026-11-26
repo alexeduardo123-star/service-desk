@@ -246,3 +246,35 @@ describe("TicketDetalhe: aprovação do gestor", () => {
   });
 });
 
+describe("TicketDetalhe: formulário do assunto", () => {
+  it("mostra as respostas gravadas no chamado", async () => {
+    usuarioLogado = TECNICO;
+    ticketService.buscar.mockResolvedValue(
+      chamado({
+        assunto: { id: 8, nome: "Novo acesso" },
+        respostasFormulario: [
+          { campoId: 1, rotulo: "Sistema", tipo: "SELECAO", valor: "ERP" },
+          { campoId: 2, rotulo: "Desde quando?", tipo: "DATA", valor: "2026-11-20" },
+          { campoId: 3, rotulo: "Liga?", tipo: "CHECKBOX", valor: false },
+        ],
+      })
+    );
+    renderizar();
+
+    const secao = await screen.findByRole("region", { name: "Dados do formulário" });
+    expect(within(secao).getByText("ERP")).toBeInTheDocument();
+    expect(within(secao).getByText("20/11/2026")).toBeInTheDocument();
+    expect(within(secao).getByText("Não")).toBeInTheDocument();
+    expect(within(secao).getByText(/Novo acesso/)).toBeInTheDocument();
+  });
+
+  it("chamado sem formulário não mostra a seção", async () => {
+    usuarioLogado = TECNICO;
+    ticketService.buscar.mockResolvedValue(chamado());
+    renderizar();
+
+    await screen.findByText("VPN não conecta");
+    expect(screen.queryByRole("region", { name: "Dados do formulário" })).not.toBeInTheDocument();
+  });
+});
+

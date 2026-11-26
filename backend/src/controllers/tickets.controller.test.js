@@ -355,3 +355,49 @@ describe("tickets.controller: aprovação do gestor", () => {
     expect(eventos.avisarTicketCriado).not.toHaveBeenCalled();
   });
 });
+
+describe("tickets.controller: formulário do assunto", () => {
+  const CAMPOS = [
+    { id: 1, rotulo: "Sistema", tipo: "SELECAO", obrigatorio: true, opcoes: ["ERP", "CRM"] },
+    { id: 2, rotulo: "Justificativa", tipo: "TEXTO", obrigatorio: false, opcoes: [] },
+  ];
+  const NOVO = { titulo: "Acesso", descricao: "Preciso", categoriaId: 1, prioridadeId: 2, assuntoId: 5 };
+
+  beforeEach(() => {
+    prisma.ticket.create.mockImplementation(async ({ data }) => ({ id: 60, ...data }));
+  });
+
+  it("grava as respostas validadas junto com o chamado", async () => {
+    prisma.assunto.findUnique.mockResolvedValue({ id: 5, ativo: true, prioridadeId: 4, formulario: { ativo: true, campos: CAMPOS } });
+
+    await criar({ body: { ...NOVO, respostas: { 1: "ERP", 2: "  urgente " } }, user: TECNICO }, mockRes(), throwingNext);
+
+    expect(prisma.ticket.create.mock.calls[0][0].data.respostasFormulario).toEqual([
+      { campoId: 1, rotulo: "Sistema", tipo: "SELECAO", valor: "ERP" },
+      { campoId: 2, rotulo: "Justificativa", tipo: "TEXTO", valor: "urgente" },
+    ]);
+  });
+
+  it("recusa (400) quando falta campo obrigatório e não cria o chamado", async () => {
+    prisma.assunto.findUnique.mockResolvedValue({ id: 5, ativo: true, prioridadeId: 4, formulario: { ativo: true, campos: CAMPOS } });
+    const res = mockRes();
+
+    await criar({ body: { ...NOVO, respostas: { 2: "x" } }, user: TECNICO }, res, throwingNext);
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({ erro: 'Preencha o campo "Sistema"' });
+    expect(prisma.ticket.create).not.toHaveBeenCalled();
+  });
+
+  it("assunto sem formulário (ou com formulário inativo) não guarda respostas", async () => {
+    for (const formulario of [null, { ativo: false, campos: CAMPOS }]) {
+      prisma.assunto.findUnique.mockResolvedValue({ id: 5, ativo: true, prioridadeId: 4, formulario });
+      prisma.ticket.create.mockClear();
+
+      await criar({ body: { ...NOVO, respostas: { 1: "ERP" } }, user: TECNICO }, mockRes(), throwingNext);
+
+      expect(prisma.ticket.create.mock.calls[0][0].data.respostasFormulario).toBeUndefined();
+    }
+  });
+});
+

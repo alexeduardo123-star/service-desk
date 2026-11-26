@@ -13,6 +13,7 @@ import {
   erroAoRetomar,
   erroAoSuspender,
 } from "../utils/eventosTicket.js";
+import { validarRespostas } from "../utils/respostasFormulario.js";
 import {
   statusInicialAprovacao,
   erroDeAprovacao,
@@ -57,16 +58,34 @@ export const buscar = asyncHandler(async (req, res) => {
 export const criar = asyncHandler(async (req, res) => {
   const { titulo, descricao, categoriaId, equipamentoId, departamentoId, assuntoId } = req.body;
   let { prioridadeId } = req.body;
+  let respostasFormulario = null;
 
   // Com assunto escolhido, a prioridade é a cadastrada nele (o que veio do
   // cliente é ignorado). Sem assunto, vale a prioridade informada.
   if (assuntoId) {
     const assunto = await prisma.assunto.findUnique({
       where: { id: assuntoId },
-      select: { id: true, ativo: true, prioridadeId: true },
+      select: {
+        id: true,
+        ativo: true,
+        prioridadeId: true,
+        formulario: {
+          select: {
+            ativo: true,
+            campos: { orderBy: { ordem: "asc" }, select: { id: true, rotulo: true, tipo: true, obrigatorio: true, opcoes: true } },
+          },
+        },
+      },
     });
     if (!assunto || !assunto.ativo) return res.status(400).json({ erro: "Assunto inválido ou inativo" });
     prioridadeId = assunto.prioridadeId ?? prioridadeId;
+
+    // O assunto pode ter um formulário (dados extras que o atendimento precisa).
+    if (assunto.formulario?.ativo) {
+      const validacao = validarRespostas(assunto.formulario.campos, req.body.respostas ?? {});
+      if (validacao.erro) return res.status(400).json({ erro: validacao.erro });
+      respostasFormulario = validacao.respostas;
+    }
   }
   if (!prioridadeId) return res.status(400).json({ erro: "Informe a prioridade do chamado" });
 
@@ -81,6 +100,7 @@ export const criar = asyncHandler(async (req, res) => {
       categoriaId,
       prioridadeId,
       assuntoId: assuntoId || null,
+      respostasFormulario: respostasFormulario ?? undefined,
       equipamentoId: equipamentoId || null,
       departamentoId: departamentoId || null,
       solicitanteId: req.user.id,
