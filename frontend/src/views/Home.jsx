@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 import ticketService from "../services/ticketService";
 import dashboardService from "../services/dashboardService";
 import TicketCard from "../components/TicketCard";
+import CabecalhoPagina from "../components/CabecalhoPagina";
+import { Carregando, ErroCarregar, Vazio } from "../components/Estados";
 import StatCard from "../components/charts/StatCard";
 import ChartCard from "../components/charts/ChartCard";
 import LineChart from "../components/charts/LineChart";
@@ -21,6 +23,8 @@ export default function Home() {
   const [tickets, setTickets] = useState([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState(false);
+  // Incrementado pelo "Tentar de novo" para refazer a busca.
+  const [tentativa, setTentativa] = useState(0);
 
   useEffect(() => {
     let ativo = true;
@@ -37,36 +41,39 @@ export default function Home() {
     return () => {
       ativo = false;
     };
-  }, [dias]);
+  }, [dias, tentativa]);
 
   const totais = resumo?.totais;
   const valor = (n) => (carregando && !resumo ? "…" : n);
 
   return (
     <div>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-semibold text-gray-900">Dashboard</h1>
-        <div className="flex items-center gap-3">
-          <div className="flex gap-1 rounded-full bg-gray-200 p-0.5" role="group" aria-label="Período">
-            {PERIODOS.map((p) => (
-              <button
-                key={p}
-                onClick={() => setDias(p)}
-                className={`rounded-full px-3 py-1 text-xs font-medium ${dias === p ? "bg-white text-gray-900 shadow-sm" : "text-gray-600"}`}
-              >
-                {p} dias
-              </button>
-            ))}
-          </div>
-          <Link to="/tickets/novo" className="text-sm font-medium text-blue-600 hover:underline">
-            Abrir novo chamado
-          </Link>
+      <CabecalhoPagina titulo="Dashboard">
+        <div className="flex gap-1 rounded-full bg-gray-200 p-0.5" role="group" aria-label="Período">
+          {PERIODOS.map((p) => (
+            <button
+              type="button"
+              key={p}
+              aria-pressed={dias === p}
+              onClick={() => setDias(p)}
+              className={`rounded-full px-3 py-1 text-xs font-medium ${dias === p ? "bg-white text-gray-900 shadow-sm" : "text-gray-700"}`}
+            >
+              {p} dias
+            </button>
+          ))}
         </div>
-      </div>
+        <Link to="/tickets/novo" className="rounded text-sm font-medium text-blue-700 hover:underline">
+          Abrir novo chamado
+        </Link>
+      </CabecalhoPagina>
 
-      {erro && <p className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-700">Não foi possível carregar as métricas.</p>}
+      {erro && (
+        <div className="mb-4">
+          <ErroCarregar texto="Não foi possível carregar as métricas." onTentarDeNovo={() => setTentativa((t) => t + 1)} />
+        </div>
+      )}
 
-      <div className="mb-4 grid grid-cols-2 gap-4 lg:grid-cols-4 xl:grid-cols-6">
+      <div className="mb-4 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4 xl:grid-cols-6">
         <StatCard titulo="Total" valor={valor(totais?.total)} cor="#64748b" />
         <StatCard titulo={STATUS_LABEL[StatusTicket.ABERTO]} valor={valor(totais?.abertos)} cor={CORES_STATUS.ABERTO} />
         <StatCard titulo={STATUS_LABEL[StatusTicket.EM_ANDAMENTO]} valor={valor(totais?.emAndamento)} cor={CORES_STATUS.EM_ANDAMENTO} />
@@ -139,19 +146,20 @@ export default function Home() {
 
       <div className="mb-4 flex items-center justify-between">
         <h2 className="text-lg font-semibold text-gray-900">Chamados recentes</h2>
-        <Link to="/tickets" className="text-sm font-medium text-blue-600 hover:underline">
+        <Link to="/tickets" className="rounded text-sm font-medium text-blue-700 hover:underline">
           Ver todos
         </Link>
       </div>
 
       {carregando && !resumo ? (
-        <p className="text-sm text-gray-500">Carregando…</p>
+        <Carregando />
+      ) : erro ? null : tickets.length === 0 ? (
+        <Vazio texto="Nenhum chamado encontrado." />
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {tickets.slice(0, 6).map((ticket) => (
             <TicketCard key={ticket.id} ticket={ticket} />
           ))}
-          {tickets.length === 0 && <p className="text-sm text-gray-400">Nenhum chamado encontrado.</p>}
         </div>
       )}
     </div>

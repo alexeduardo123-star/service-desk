@@ -4,8 +4,10 @@ import { useAuth } from "../auth/useAuth";
 import Botao from "../components/Botao";
 import InputField from "../components/InputField";
 import Logo from "../components/Logo";
+import { useTituloPagina } from "../hooks/useTituloPagina";
 
 export default function Login() {
+  useTituloPagina("Entrar");
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [erro, setErro] = useState("");
@@ -34,15 +36,15 @@ export default function Login() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-100">
-      <form onSubmit={handleSubmit} className="w-full max-w-sm rounded-lg bg-white p-8 shadow-md">
+    <div className="flex min-h-screen items-center justify-center bg-gray-100 px-4 py-8">
+      <form onSubmit={handleSubmit} className="w-full max-w-sm rounded-lg bg-white p-6 shadow-md sm:p-8">
         <h1 className="mb-1">
           <Logo tamanho={40} />
         </h1>
         <p className="mb-6 text-sm text-gray-500">Entre com sua conta para continuar</p>
 
         {senhaRedefinida && (
-          <p className="mb-4 text-sm text-green-700">
+          <p role="status" className="mb-4 text-sm text-green-700">
             Senha redefinida com sucesso. Entre com sua nova senha.
           </p>
         )}
@@ -64,7 +66,7 @@ export default function Login() {
           />
         </div>
 
-        {erro && <p className="mt-3 text-sm text-red-600">{erro}</p>}
+        {erro && <p role="alert" className="mt-3 text-sm text-red-700">{erro}</p>}
 
         <Botao type="submit" className="mt-6 w-full" disabled={carregando}>
           {carregando ? "Entrando…" : "Entrar"}
@@ -79,7 +81,7 @@ export default function Login() {
           </Link>
         </div>
 
-        <p className="mt-4 text-xs text-gray-400">
+        <p className="mt-4 text-xs text-gray-500">
           admin@servicedesk.com / tecnico@servicedesk.com / usuario@servicedesk.com — senha: 123456
         </p>
       </form>

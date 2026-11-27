@@ -65,7 +65,7 @@ export default function MenuConfiguracoes({ usuario }) {
 
           {grupos.map((grupo) => (
             <div key={grupo.titulo} className="mt-2 border-t border-gray-100 pt-2">
-              <p className="px-3 pb-1 text-xs font-semibold uppercase text-gray-400">{grupo.titulo}</p>
+              <p className="px-3 pb-1 text-xs font-semibold uppercase text-gray-500">{grupo.titulo}</p>
               {grupo.itens.map((item) => (
                 <NavLink key={item.to} to={item.to} className={itemClasse} onClick={fechar}>
                   {item.rotulo}

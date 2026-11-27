@@ -1,4 +1,6 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import CabecalhoPagina from "../components/CabecalhoPagina";
+import { Carregando, ErroCarregar } from "../components/Estados";
 import permissaoService from "../services/permissaoService";
 import { useNotification } from "../store/useNotification";
 import { PAPEL_LABEL } from "../constants/labels";
@@ -8,15 +10,25 @@ import { PAPEL_LABEL } from "../constants/labels";
 export default function PerfisPermissoes() {
   const [dados, setDados] = useState(null);
   const [salvando, setSalvando] = useState("");
+  const [falhou, setFalhou] = useState(false);
   const { notificar } = useNotification();
 
-  useEffect(() => {
+  const carregar = useCallback(() => {
     permissaoService
       .listar()
-      .then(setDados)
-      .catch(() => notificar("Erro ao carregar permissões", "erro"));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+      .then((resposta) => {
+        setDados(resposta);
+        setFalhou(false);
+      })
+      .catch(() => {
+        setFalhou(true);
+        notificar("Erro ao carregar permissões", "erro");
+      });
+  }, [notificar]);
+
+  useEffect(() => {
+    carregar();
+  }, [carregar]);
 
   async function alternar(papel, permissao, concedida) {
     const chave = `${papel}:${permissao}`;
@@ -31,24 +43,31 @@ export default function PerfisPermissoes() {
     }
   }
 
-  if (!dados) return <p className="text-sm text-gray-500">Carregando...</p>;
+  if (!dados) {
+    return (
+      <div>
+        <CabecalhoPagina titulo="Perfis e permissões" />
+        {falhou ? <ErroCarregar texto="Não foi possível carregar as permissões." onTentarDeNovo={carregar} /> : <Carregando />}
+      </div>
+    );
+  }
 
   const grupos = [...new Set(dados.permissoes.map((p) => p.grupo))];
 
   return (
     <div>
-      <h1 className="text-xl font-semibold text-gray-900">Perfis e permissões</h1>
-      <p className="mt-1 mb-4 text-sm text-gray-600">
-        Defina o que cada perfil pode fazer no sistema. As mudanças valem na hora, para todos os usuários do perfil.
-      </p>
+      <CabecalhoPagina
+        titulo="Perfis e permissões"
+        descricao="Defina o que cada perfil pode fazer no sistema. As mudanças valem na hora, para todos os usuários do perfil."
+      />
 
-      <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
+      <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white" tabIndex={0} role="region" aria-label="Matriz de permissões">
         <table className="w-full text-sm">
-          <thead className="bg-gray-50 text-left text-xs uppercase text-gray-500">
+          <thead className="bg-gray-50 text-left text-xs uppercase text-gray-600">
             <tr>
-              <th className="px-4 py-3">Permissão</th>
+              <th scope="col" className="px-4 py-3">Permissão</th>
               {dados.papeis.map((papel) => (
-                <th key={papel} className="px-4 py-3 text-center">
+                <th scope="col" key={papel} className="whitespace-nowrap px-4 py-3 text-center">
                   {PAPEL_LABEL[papel] ?? papel}
                 </th>
               ))}
@@ -77,13 +96,13 @@ function GrupoLinhas({ grupo, permissoes, papeis, matriz, salvando, onAlternar }
   return (
     <>
       <tr className="bg-gray-100">
-        <td colSpan={papeis.length + 1} className="px-4 py-2 text-xs font-semibold uppercase text-gray-600">
+        <th scope="colgroup" colSpan={papeis.length + 1} className="px-4 py-2 text-left text-xs font-semibold uppercase text-gray-700">
           {grupo}
-        </td>
+        </th>
       </tr>
       {permissoes.map((p) => (
         <tr key={p.chave} className="border-t border-gray-100">
-          <td className="px-4 py-2 text-gray-800">{p.rotulo}</td>
+          <th scope="row" className="px-4 py-2 text-left font-normal text-gray-800">{p.rotulo}</th>
           {papeis.map((papel) => {
             const travado = papel === "ADMIN";
             const marcado = Boolean(matriz[papel]?.[p.chave]);

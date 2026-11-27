@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
 import KanbanCard from "../components/KanbanCard";
+import Botao from "../components/Botao";
+import CabecalhoPagina from "../components/CabecalhoPagina";
 import InputField from "../components/InputField";
+import LinkBotao from "../components/LinkBotao";
 import SelectField from "../components/SelectField";
+import { Carregando, ErroCarregar } from "../components/Estados";
 import { useAuth } from "../auth/useAuth";
 import { useNotification } from "../store/useNotification";
 import ticketService from "../services/ticketService";
@@ -28,6 +31,7 @@ export default function Kanban() {
   const [departamentos, setDepartamentos] = useState([]);
   const [filtros, setFiltros] = useState(FILTROS_VAZIOS);
   const [carregando, setCarregando] = useState(true);
+  const [falhou, setFalhou] = useState(false);
   const [arrastandoId, setArrastandoId] = useState(null);
   const [colunaSobre, setColunaSobre] = useState(null);
 
@@ -36,7 +40,9 @@ export default function Kanban() {
       // Mais antigos primeiro: dentro de cada coluna, quem espera há mais tempo
       // fica no topo (agruparPorStatus preserva a ordem que veio da API).
       setTickets(await ticketService.listar({ ordem: "antigos" }));
+      setFalhou(false);
     } catch {
+      setFalhou(true);
       notificar("Erro ao carregar os chamados", "erro");
     } finally {
       setCarregando(false);
@@ -100,20 +106,19 @@ export default function Kanban() {
 
   return (
     <div>
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h1 className="text-xl font-semibold text-gray-900">Kanban</h1>
-          <p className="text-sm text-gray-500">
-            {podeGerenciar ? "Arraste os cartões entre as colunas para mudar o status." : "Acompanhe o andamento dos seus chamados."}
-          </p>
-        </div>
-        <Link to="/tickets/novo" className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
-          Novo chamado
-        </Link>
-      </div>
+      <CabecalhoPagina
+        titulo="Kanban"
+        descricao={
+          podeGerenciar
+            ? "Arraste os cartões entre as colunas (ou use o seletor do cartão) para mudar o status."
+            : "Acompanhe o andamento dos seus chamados."
+        }
+      >
+        <LinkBotao to="/tickets/novo">Novo chamado</LinkBotao>
+      </CabecalhoPagina>
 
-      <div className="mb-4 flex flex-wrap items-end gap-3 rounded-lg border border-gray-200 bg-white p-3">
-        <div className="w-56">
+      <div role="search" aria-label="Filtros do quadro" className="mb-4 grid grid-cols-1 items-end gap-3 rounded-lg border border-gray-200 bg-white p-3 sm:flex sm:flex-wrap">
+        <div className="sm:w-56">
           <InputField
             label="Buscar"
             placeholder="Título, descrição ou #número"
@@ -121,7 +126,7 @@ export default function Kanban() {
             onChange={(e) => alterarFiltro("busca", e.target.value)}
           />
         </div>
-        <div className="w-40">
+        <div className="sm:w-40">
           <SelectField
             label="Prioridade"
             placeholder="Todas"
@@ -130,7 +135,7 @@ export default function Kanban() {
             options={prioridades.map((p) => ({ value: p.id, label: p.nome }))}
           />
         </div>
-        <div className="w-40">
+        <div className="sm:w-40">
           <SelectField
             label="Categoria"
             placeholder="Todas"
@@ -139,7 +144,7 @@ export default function Kanban() {
             options={categorias.map((c) => ({ value: c.id, label: c.nome }))}
           />
         </div>
-        <div className="w-40">
+        <div className="sm:w-40">
           <SelectField
             label="Setor"
             placeholder="Todos"
@@ -159,16 +164,20 @@ export default function Kanban() {
           SLA vencido
         </label>
         {filtrosAtivos && (
-          <button onClick={() => setFiltros(FILTROS_VAZIOS)} className="pb-2 text-sm text-blue-600 hover:underline">
+          <Botao type="button" variante="link" className="justify-self-start pb-2" onClick={() => setFiltros(FILTROS_VAZIOS)}>
             Limpar filtros
-          </button>
+          </Botao>
         )}
       </div>
 
       {carregando ? (
-        <p className="text-sm text-gray-500">Carregando…</p>
+        <Carregando />
+      ) : falhou ? (
+        <ErroCarregar texto="Não foi possível carregar os chamados." onTentarDeNovo={carregar} />
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+        // Até o desktop largo as colunas ficam lado a lado e o quadro rola na
+        // horizontal (com encaixe em cada coluna no celular); no xl cabem as 5.
+        <div className="-mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-3 sm:mx-0 sm:px-0 xl:grid xl:grid-cols-5 xl:overflow-visible">
           {COLUNAS_KANBAN.map((status) => (
             <section
               key={status}
@@ -180,7 +189,7 @@ export default function Kanban() {
               }}
               onDragLeave={() => setColunaSobre((atual) => (atual === status ? null : atual))}
               onDrop={(e) => podeGerenciar && soltar(e, status)}
-              className={`flex min-h-64 flex-col rounded-lg border bg-gray-50 p-3 transition-colors ${
+              className={`flex min-h-64 w-[85vw] max-w-xs shrink-0 snap-start flex-col rounded-lg border bg-gray-50 p-3 transition-colors sm:w-72 xl:w-auto xl:max-w-none ${
                 colunaSobre === status ? "border-blue-400 bg-blue-50" : "border-gray-200"
               }`}
             >
@@ -189,7 +198,12 @@ export default function Kanban() {
                   <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: CORES_STATUS[status] }} aria-hidden="true" />
                   {STATUS_LABEL[status]}
                 </h2>
-                <span className="rounded-full bg-gray-200 px-2 py-0.5 text-xs font-medium text-gray-700">{colunas[status].length}</span>
+                <span
+                  className="rounded-full bg-gray-200 px-2 py-0.5 text-xs font-medium text-gray-700"
+                  aria-label={`${colunas[status].length} ${colunas[status].length === 1 ? "chamado" : "chamados"}`}
+                >
+                  {colunas[status].length}
+                </span>
               </header>
 
               <div className="flex flex-1 flex-col gap-2">
@@ -208,7 +222,7 @@ export default function Kanban() {
                   />
                 ))}
                 {colunas[status].length === 0 && (
-                  <p className="rounded-md border border-dashed border-gray-300 p-4 text-center text-xs text-gray-400">Nenhum chamado</p>
+                  <p className="rounded-md border border-dashed border-gray-300 p-4 text-center text-xs text-gray-500">Nenhum chamado</p>
                 )}
               </div>
             </section>

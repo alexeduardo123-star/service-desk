@@ -9,7 +9,7 @@ const MARGEM = { topo: 10, direita: 10, base: 24, esquerda: 30 };
 export default function LineChart({ rotulos, series, vazio = "Sem dados no período." }) {
   const todos = series.flatMap((s) => s.valores);
   if (rotulos.length === 0 || todos.every((v) => v === 0)) {
-    return <p className="py-6 text-center text-sm text-gray-400">{vazio}</p>;
+    return <p className="py-6 text-center text-sm text-gray-500">{vazio}</p>;
   }
 
   const max = escalaMaxima(todos);

@@ -3,8 +3,10 @@ import { Link, useNavigate } from "react-router-dom";
 import * as authService from "../services/authService";
 import Botao from "../components/Botao";
 import InputField from "../components/InputField";
+import { useTituloPagina } from "../hooks/useTituloPagina";
 
 export default function EsqueciSenha() {
+  useTituloPagina("Recuperar senha");
   const [etapa, setEtapa] = useState("solicitar"); // "solicitar" | "redefinir"
   const [email, setEmail] = useState("");
   const [codigo, setCodigo] = useState("");
@@ -52,8 +54,8 @@ export default function EsqueciSenha() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-100">
-      <div className="w-full max-w-sm rounded-lg bg-white p-8 shadow-md">
+    <div className="flex min-h-screen items-center justify-center bg-gray-100 px-4 py-8">
+      <div className="w-full max-w-sm rounded-lg bg-white p-6 shadow-md sm:p-8">
         <h1 className="mb-1 text-xl font-bold text-gray-900">Esqueci minha senha</h1>
 
         {etapa === "solicitar" && (
@@ -70,7 +72,7 @@ export default function EsqueciSenha() {
               required
             />
 
-            {erro && <p className="mt-3 text-sm text-red-600">{erro}</p>}
+            {erro && <p role="alert" className="mt-3 text-sm text-red-700">{erro}</p>}
 
             <Botao type="submit" className="mt-6 w-full" disabled={carregando}>
               {carregando ? "Enviando…" : "Enviar código"}
@@ -112,7 +114,7 @@ export default function EsqueciSenha() {
               />
             </div>
 
-            {erro && <p className="mt-3 text-sm text-red-600">{erro}</p>}
+            {erro && <p role="alert" className="mt-3 text-sm text-red-700">{erro}</p>}
 
             <Botao type="submit" className="mt-6 w-full" disabled={carregando}>
               {carregando ? "Redefinindo…" : "Redefinir senha"}
@@ -121,7 +123,7 @@ export default function EsqueciSenha() {
             <button
               type="button"
               onClick={() => setEtapa("solicitar")}
-              className="mt-3 w-full text-center text-xs text-gray-400 hover:underline"
+              className="mt-3 w-full rounded text-center text-xs text-gray-600 hover:underline"
             >
               Não recebeu o código? Enviar novamente
             </button>

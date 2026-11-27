@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import Botao from "../components/Botao";
+import CabecalhoPagina from "../components/CabecalhoPagina";
+import TextAreaField from "../components/TextAreaField";
+import { Carregando, ErroCarregar, Vazio } from "../components/Estados";
 import InputField from "../components/InputField";
 import SelectField from "../components/SelectField";
 import Paginacao from "../components/Paginacao";
@@ -29,6 +32,7 @@ export default function Notificacoes() {
   const [apenasNaoLidas, setApenasNaoLidas] = useState(false);
   const [tipoFiltro, setTipoFiltro] = useState("");
   const [carregando, setCarregando] = useState(true);
+  const [falhou, setFalhou] = useState(false);
   const [pagina, setPagina] = useState(1);
   const [form, setForm] = useState(null);
   const [usuarios, setUsuarios] = useState([]);
@@ -39,7 +43,9 @@ export default function Notificacoes() {
     if (tipoFiltro) filtros.tipo = tipoFiltro;
     try {
       setNotificacoes(await notificacaoService.listar(filtros));
+      setFalhou(false);
     } catch {
+      setFalhou(true);
       notificar("Erro ao carregar notificações", "erro");
     } finally {
       setCarregando(false);
@@ -131,23 +137,18 @@ export default function Notificacoes() {
 
   return (
     <div className="max-w-4xl">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h1 className="text-xl font-semibold text-gray-900">Notificações</h1>
-          <p className="text-sm text-gray-500">
-            {naoLidas > 0 ? `${naoLidas} não lida(s) nesta lista` : "Você está em dia com os avisos."}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Botao variante="secundario" onClick={marcarTodas}>
-            Marcar todas como lidas
-          </Botao>
-          <Botao variante="secundario" onClick={limparLidas}>
-            Limpar lidas
-          </Botao>
-          {isAdmin && !form && <Botao onClick={() => setForm(FORM_VAZIO)}>Novo comunicado</Botao>}
-        </div>
-      </div>
+      <CabecalhoPagina
+        titulo="Notificações"
+        descricao={naoLidas > 0 ? `${naoLidas} não lida(s) nesta lista` : "Você está em dia com os avisos."}
+      >
+        <Botao type="button" variante="secundario" onClick={marcarTodas}>
+          Marcar todas como lidas
+        </Botao>
+        <Botao type="button" variante="secundario" onClick={limparLidas}>
+          Limpar lidas
+        </Botao>
+        {isAdmin && !form && <Botao type="button" onClick={() => setForm(FORM_VAZIO)}>Novo comunicado</Botao>}
+      </CabecalhoPagina>
 
       {form && (
         <form onSubmit={enviarComunicado} className="mb-6 grid gap-3 rounded-lg border border-gray-200 bg-white p-4 sm:grid-cols-2">
@@ -185,17 +186,15 @@ export default function Notificacoes() {
               options={usuarios.map((u) => ({ value: u.id, label: `${u.nome} (${u.email})` }))}
             />
           )}
-          <label className="flex flex-col gap-1 text-sm text-gray-700 sm:col-span-2">
-            <span className="font-medium">Mensagem</span>
-            <textarea
+          <div className="sm:col-span-2">
+            <TextAreaField
+              label="Mensagem"
               required
-              rows={3}
-              className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
               value={form.mensagem}
               onChange={(e) => setForm({ ...form, mensagem: e.target.value })}
             />
-          </label>
-          <div className="flex gap-2 sm:col-span-2">
+          </div>
+          <div className="flex flex-wrap gap-2 sm:col-span-2">
             <Botao type="submit">Enviar comunicado</Botao>
             <Botao type="button" variante="secundario" onClick={() => setForm(null)}>
               Cancelar
@@ -204,22 +203,26 @@ export default function Notificacoes() {
         </form>
       )}
 
-      <div className="mb-4 flex flex-wrap items-end gap-3">
-        <div className="flex gap-2">
+      <div role="search" aria-label="Filtros das notificações" className="mb-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+        <div role="group" aria-label="Mostrar" className="flex gap-2">
           <button
+            type="button"
+            aria-pressed={!apenasNaoLidas}
             onClick={() => mudarFiltro(setApenasNaoLidas, false)}
             className={`rounded-full px-3 py-1 text-xs font-medium ${!apenasNaoLidas ? "bg-gray-800 text-white" : "bg-gray-200 text-gray-700"}`}
           >
             Todas
           </button>
           <button
+            type="button"
+            aria-pressed={apenasNaoLidas}
             onClick={() => mudarFiltro(setApenasNaoLidas, true)}
             className={`rounded-full px-3 py-1 text-xs font-medium ${apenasNaoLidas ? "bg-gray-800 text-white" : "bg-gray-200 text-gray-700"}`}
           >
             Não lidas
           </button>
         </div>
-        <div className="w-48">
+        <div className="sm:w-48">
           <SelectField
             aria-label="Filtrar por tipo"
             placeholder="Todos os tipos"
@@ -231,7 +234,11 @@ export default function Notificacoes() {
       </div>
 
       {carregando ? (
-        <p className="text-sm text-gray-500">Carregando…</p>
+        <Carregando />
+      ) : falhou ? (
+        <ErroCarregar texto="Não foi possível carregar as notificações." onTentarDeNovo={carregar} />
+      ) : notificacoes.length === 0 ? (
+        <Vazio texto="Nenhuma notificação encontrada." />
       ) : (
         <ul className="flex flex-col gap-2">
           {itens.map((n) => (
@@ -241,14 +248,15 @@ export default function Notificacoes() {
             >
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    {!n.lida && <span className="sr-only">Não lida:</span>}
                     <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${TIPO_NOTIFICACAO_COR[n.tipo]}`}>
                       {TIPO_NOTIFICACAO_LABEL[n.tipo]}
                     </span>
                     <h2 className={`text-sm text-gray-900 ${n.lida ? "font-medium" : "font-bold"}`}>
                       {/* Notificação de chamado: o título também abre o chamado (e marca como lida). */}
                       {n.ticketId ? (
-                        <Link to={`/tickets/${n.ticketId}`} onClick={() => abrir(n)} className="hover:text-blue-600 hover:underline">
+                        <Link to={`/tickets/${n.ticketId}`} onClick={() => abrir(n)} className="rounded hover:text-blue-700 hover:underline">
                           {n.titulo}
                         </Link>
                       ) : (
@@ -257,35 +265,36 @@ export default function Notificacoes() {
                     </h2>
                   </div>
                   <p className="mt-1 text-sm text-gray-600">{n.mensagem}</p>
-                  <p className="mt-1 text-xs text-gray-400" title={formatDate(n.createdAt)}>
+                  <p className="mt-1 text-xs text-gray-500" title={formatDate(n.createdAt)}>
                     {tempoRelativo(n.createdAt)}
                   </p>
                 </div>
-                <div className="flex shrink-0 gap-3 text-sm">
+                <div className="flex shrink-0 flex-wrap gap-3 text-sm">
                   {n.ticketId && (
-                    <Link to={`/tickets/${n.ticketId}`} onClick={() => abrir(n)} className="text-blue-600 hover:underline">
+                    <Link to={`/tickets/${n.ticketId}`} onClick={() => abrir(n)} className="rounded font-medium text-blue-700 hover:underline">
                       Ver chamado
                     </Link>
                   )}
-                  <button onClick={() => alternarLida(n)} className="text-gray-600 hover:underline">
+                  <Botao
+                    type="button"
+                    variante="link"
+                    className="text-gray-700"
+                    aria-label={`${n.lida ? "Marcar como não lida" : "Marcar como lida"}: ${n.titulo}`}
+                    onClick={() => alternarLida(n)}
+                  >
                     {n.lida ? "Marcar como não lida" : "Marcar como lida"}
-                  </button>
-                  <button onClick={() => excluir(n.id)} className="text-red-600 hover:underline">
+                  </Botao>
+                  <Botao type="button" variante="linkPerigo" aria-label={`Excluir notificação: ${n.titulo}`} onClick={() => excluir(n.id)}>
                     Excluir
-                  </button>
+                  </Botao>
                 </div>
               </div>
             </li>
           ))}
-          {notificacoes.length === 0 && (
-            <li className="rounded-lg border border-dashed border-gray-300 p-8 text-center text-sm text-gray-400">
-              Nenhuma notificação encontrada.
-            </li>
-          )}
         </ul>
       )}
 
-      {!carregando && <Paginacao {...paginacao} onChange={setPagina} />}
+      {!carregando && !falhou && <Paginacao {...paginacao} onChange={setPagina} />}
     </div>
   );
 }

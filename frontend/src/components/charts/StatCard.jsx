@@ -8,7 +8,7 @@ export default function StatCard({ titulo, valor, detalhe, cor = "#111827", dest
         <p className="text-sm text-gray-500">{titulo}</p>
       </div>
       <p className={`mt-1 text-2xl font-bold ${destaque ? "text-red-600" : "text-gray-900"}`}>{valor}</p>
-      {detalhe && <p className="text-xs text-gray-400">{detalhe}</p>}
+      {detalhe && <p className="text-xs text-gray-500">{detalhe}</p>}
     </div>
   );
 }

@@ -3,7 +3,11 @@ import baseConhecimentoService from "../services/baseConhecimentoService";
 import { useDebounce } from "../hooks/useDebounce";
 import categoriaService from "../services/categoriaService";
 import Botao from "../components/Botao";
+import CabecalhoPagina from "../components/CabecalhoPagina";
 import InputField from "../components/InputField";
+import SelectField from "../components/SelectField";
+import TextAreaField from "../components/TextAreaField";
+import { Carregando, ErroCarregar, Vazio } from "../components/Estados";
 import { useAuth } from "../auth/useAuth";
 import { temPermissao } from "../utils/permissoes";
 import { formatDate } from "../utils/formatDate";
@@ -14,6 +18,7 @@ export default function BaseConhecimento() {
   const [categorias, setCategorias] = useState([]);
   const [form, setForm] = useState(null);
   const [carregando, setCarregando] = useState(true);
+  const [falhou, setFalhou] = useState(false);
   const [busca, setBusca] = useState("");
   const [categoriaFiltro, setCategoriaFiltro] = useState("");
   const { usuario } = useAuth();
@@ -30,16 +35,22 @@ export default function BaseConhecimento() {
     setCarregando(true);
     try {
       const lista = await baseConhecimentoService.listar({ q: buscaAtrasada, categoriaId: categoriaFiltro });
-      if (numero === ultimaBusca.current) setArtigos(lista);
+      if (numero === ultimaBusca.current) {
+        setArtigos(lista);
+        setFalhou(false);
+      }
     } catch {
-      if (numero === ultimaBusca.current) notificar("Erro ao carregar os artigos", "erro");
+      if (numero === ultimaBusca.current) {
+        setFalhou(true);
+        notificar("Erro ao carregar os artigos", "erro");
+      }
     } finally {
       if (numero === ultimaBusca.current) setCarregando(false);
     }
   }
 
   useEffect(() => {
-    categoriaService.listar().then(setCategorias);
+    categoriaService.listar().then(setCategorias).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -66,104 +77,99 @@ export default function BaseConhecimento() {
 
   async function excluir(id) {
     if (!confirm("Excluir este artigo?")) return;
-    await baseConhecimentoService.excluir(id);
-    notificar("Artigo excluído");
-    carregar();
+    try {
+      await baseConhecimentoService.excluir(id);
+      notificar("Artigo excluído");
+      carregar();
+    } catch (err) {
+      notificar(err.response?.data?.erro || "Erro ao excluir o artigo", "erro");
+    }
   }
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-gray-900">Base de Conhecimento</h1>
+      <CabecalhoPagina titulo="Base de Conhecimento">
         {podeEscrever && !form && (
-          <Botao onClick={() => setForm({ titulo: "", conteudo: "", categoriaId: "" })}>Novo artigo</Botao>
+          <Botao type="button" onClick={() => setForm({ titulo: "", conteudo: "", categoriaId: "" })}>Novo artigo</Botao>
         )}
-      </div>
+      </CabecalhoPagina>
 
       {form && (
         <form onSubmit={salvar} className="mb-6 flex flex-col gap-3 rounded-lg border border-gray-200 bg-white p-4">
           <InputField label="Título" value={form.titulo} onChange={(e) => setForm({ ...form, titulo: e.target.value })} required />
-          <label className="flex flex-col gap-1 text-sm text-gray-700">
-            <span className="font-medium">Conteúdo</span>
-            <textarea
-              className="rounded-md border border-gray-300 px-3 py-2 text-sm"
-              rows={4}
-              value={form.conteudo}
-              onChange={(e) => setForm({ ...form, conteudo: e.target.value })}
-              required
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-sm text-gray-700">
-            <span className="font-medium">Categoria (opcional)</span>
-            <select
-              className="rounded-md border border-gray-300 px-3 py-2 text-sm"
-              value={form.categoriaId}
-              onChange={(e) => setForm({ ...form, categoriaId: e.target.value })}
-            >
-              <option value="">Nenhuma</option>
-              {categorias.map((c) => (
-                <option key={c.id} value={c.id}>{c.nome}</option>
-              ))}
-            </select>
-          </label>
-          <div className="flex gap-2">
+          <TextAreaField
+            label="Conteúdo"
+            rows={4}
+            value={form.conteudo}
+            onChange={(e) => setForm({ ...form, conteudo: e.target.value })}
+            required
+          />
+          <SelectField
+            label="Categoria (opcional)"
+            placeholder="Nenhuma"
+            value={form.categoriaId}
+            onChange={(e) => setForm({ ...form, categoriaId: e.target.value })}
+            options={categorias.map((c) => ({ value: c.id, label: c.nome }))}
+          />
+          <div className="flex flex-wrap gap-2">
             <Botao type="submit">Publicar</Botao>
             <Botao type="button" variante="secundario" onClick={() => setForm(null)}>Cancelar</Botao>
           </div>
         </form>
       )}
 
-      <div role="search" className="mb-4 flex flex-col gap-3 sm:flex-row">
-        <label className="flex flex-1 flex-col gap-1 text-sm text-gray-700">
-          <span className="font-medium">Buscar</span>
-          <input
+      <div role="search" aria-label="Buscar artigos" className="mb-4 flex flex-col gap-3 sm:flex-row">
+        <div className="flex-1">
+          <InputField
+            label="Buscar"
             type="search"
-            className="rounded-md border border-gray-300 px-3 py-2 text-sm"
             placeholder="Título ou conteúdo do artigo"
             maxLength={100}
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
           />
-        </label>
-        <label className="flex flex-col gap-1 text-sm text-gray-700 sm:w-56">
-          <span className="font-medium">Filtrar por categoria</span>
-          <select
-            className="rounded-md border border-gray-300 px-3 py-2 text-sm"
+        </div>
+        <div className="sm:w-56">
+          <SelectField
+            label="Filtrar por categoria"
+            placeholder="Todas"
             value={categoriaFiltro}
             onChange={(e) => setCategoriaFiltro(e.target.value)}
-          >
-            <option value="">Todas</option>
-            {categorias.map((c) => (
-              <option key={c.id} value={c.id}>{c.nome}</option>
-            ))}
-          </select>
-        </label>
+            options={categorias.map((c) => ({ value: c.id, label: c.nome }))}
+          />
+        </div>
       </div>
 
       {carregando ? (
-        <p className="text-sm text-gray-500">Carregando…</p>
+        <Carregando />
+      ) : falhou ? (
+        <ErroCarregar texto="Não foi possível carregar os artigos." onTentarDeNovo={carregar} />
       ) : (
         <div className="flex flex-col gap-3">
           {artigos.map((artigo) => (
             <article key={artigo.id} className="rounded-lg border border-gray-200 bg-white p-4">
-              <div className="flex items-start justify-between">
+              <div className="flex items-start justify-between gap-3">
                 <h2 className="font-semibold text-gray-900">{artigo.titulo}</h2>
                 {podeEscrever && (
-                  <button className="text-xs text-red-600 hover:underline" onClick={() => excluir(artigo.id)}>
+                  <Botao
+                    type="button"
+                    variante="linkPerigo"
+                    className="shrink-0 text-xs"
+                    aria-label={`Excluir o artigo ${artigo.titulo}`}
+                    onClick={() => excluir(artigo.id)}
+                  >
                     Excluir
-                  </button>
+                  </Botao>
                 )}
               </div>
               <p className="mt-2 whitespace-pre-line text-sm text-gray-700">{artigo.conteudo}</p>
-              <p className="mt-2 text-xs text-gray-400">
+              <p className="mt-2 text-xs text-gray-500">
                 {artigo.categoria?.nome && `${artigo.categoria.nome} · `}
                 por {artigo.autor?.nome} em {formatDate(artigo.createdAt)}
               </p>
             </article>
           ))}
-          {artigos.length === 0 && (
-            <p className="text-sm text-gray-400">{filtrando ? "Nenhum artigo encontrado." : "Nenhum artigo publicado ainda."}</p>
-          )}
+          {artigos.length === 0 && <Vazio texto={filtrando ? "Nenhum artigo encontrado." : "Nenhum artigo publicado ainda."} />}
         </div>
       )}
     </div>

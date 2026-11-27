@@ -90,7 +90,7 @@ describe("Formularios", () => {
     render(<Formularios />);
     await screen.findByText("Solicitação de acesso");
 
-    fireEvent.click(screen.getByRole("button", { name: "Editar" }));
+    fireEvent.click(screen.getByRole("button", { name: "Editar Solicitação de acesso" }));
 
     expect(screen.getByLabelText("Campo 1")).toHaveValue("Sistema");
     expect(screen.getByLabelText("Opções (uma por linha)")).toHaveValue("ERP\nCRM");

@@ -3,7 +3,7 @@ import { PALETA } from "../../constants/cores";
 // Barras horizontais: rótulo à esquerda, barra proporcional ao maior valor e
 // o número à direita. Cada item pode trazer a própria `cor`.
 export default function BarChart({ itens, vazio = "Sem dados no período." }) {
-  if (!itens || itens.length === 0) return <p className="py-6 text-center text-sm text-gray-400">{vazio}</p>;
+  if (!itens || itens.length === 0) return <p className="py-6 text-center text-sm text-gray-500">{vazio}</p>;
 
   const max = Math.max(...itens.map((i) => i.valor), 1);
 

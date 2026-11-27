@@ -10,3 +10,22 @@ body {
   background-color: #f3f4f6;
   color: #111827;
 }
+
+@layer base {
+  /* Foco visível em tudo que recebe foco pelo teclado (links, botões, campos,
+     itens de menu). Fica na camada base para um componente poder trocar o
+     estilo com utilitários, mas nenhum componente deve simplesmente removê-lo. */
+  :focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 2px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

@@ -1,8 +1,18 @@
 import { useEffect, useState } from "react";
 import Botao from "./Botao";
+import CabecalhoPagina from "./CabecalhoPagina";
 import InputField from "./InputField";
+import SelectField from "./SelectField";
 import Toggle from "./Toggle";
+import { Carregando, ErroCarregar } from "./Estados";
 import { useNotification } from "../store/useNotification";
+
+// Nome do registro para dar contexto aos botões da linha no leitor de tela
+// ("Editar Suporte" em vez de vários "Editar" iguais).
+function nomeDoRegistro(registro, colunas) {
+  const valor = registro.nome ?? registro.titulo ?? registro[colunas[0]?.key];
+  return typeof valor === "string" || typeof valor === "number" ? String(valor) : `registro ${registro.id}`;
+}
 
 const valorInicial = (campo) => campo.default ?? (campo.type === "checkbox" ? false : "");
 
@@ -21,6 +31,7 @@ export default function CrudTable({
 }) {
   const [registros, setRegistros] = useState([]);
   const [carregando, setCarregando] = useState(true);
+  const [falhou, setFalhou] = useState(false);
   const [form, setForm] = useState(null);
   const [editandoId, setEditandoId] = useState(null);
   const [erros, setErros] = useState({});
@@ -31,7 +42,9 @@ export default function CrudTable({
 
     try {
       setRegistros(await service.listar());
+      setFalhou(false);
     } catch {
+      setFalhou(true);
       notificar("Erro ao carregar dados", "erro");
     } finally {
       setCarregando(false);
@@ -133,13 +146,11 @@ export default function CrudTable({
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="text-xl font-semibold text-gray-900">{titulo}</h1>
-
+      <CabecalhoPagina titulo={titulo}>
         {podeEscrever && !form && (
-          <Botao onClick={abrirNovo}>Novo</Botao>
+          <Botao type="button" onClick={abrirNovo}>Novo</Botao>
         )}
-      </div>
+      </CabecalhoPagina>
 
       {form && (
         <form
@@ -162,27 +173,18 @@ export default function CrudTable({
                   }
                 />
               ) : campo.type === "select" ? (
-                <label className="flex flex-col gap-1 text-sm text-gray-700">
-                  <span className="font-medium">{campo.label}</span>
-                  <select
-                    className="rounded-md border border-gray-300 px-3 py-2 text-sm"
-                    required={campo.required}
-                    value={form[campo.name]}
-                    onChange={(evento) =>
-                      setForm({
-                        ...form,
-                        [campo.name]: evento.target.value,
-                      })
-                    }
-                  >
-                    <option value="">{campo.placeholder ?? "Selecione…"}</option>
-                    {campo.options.map((opcao) => (
-                      <option key={opcao.value} value={opcao.value}>
-                        {opcao.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                <SelectField
+                  label={campo.label}
+                  required={campo.required}
+                  value={form[campo.name]}
+                  error={erros[campo.name]}
+                  placeholder={campo.placeholder ?? "Selecione…"}
+                  options={campo.options}
+                  onChange={(evento) => {
+                    setForm({ ...form, [campo.name]: evento.target.value });
+                    if (erros[campo.name]) setErros({ ...erros, [campo.name]: undefined });
+                  }}
+                />
               ) : (
                 <InputField
                   label={campo.label}
@@ -203,7 +205,7 @@ export default function CrudTable({
             </div>
           ))}
 
-          <div className="sm:col-span-2 flex gap-2">
+          <div className="flex flex-wrap gap-2 sm:col-span-2">
             <Botao type="submit">
               {editandoId !== null ? "Salvar alterações" : "Criar"}
             </Botao>
@@ -220,22 +222,31 @@ export default function CrudTable({
       )}
 
       {carregando ? (
-        <p className="text-sm text-gray-500">Carregando…</p>
+        <Carregando />
+      ) : falhou ? (
+        <ErroCarregar texto="Não foi possível carregar os registros." onTentarDeNovo={carregar} />
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
+        // Abaixo de ~640 px a tabela rola na horizontal dentro da caixa, sem
+        // empurrar a página; o foco pelo teclado permite rolar com as setas.
+        <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white" tabIndex={0} role="region" aria-label={titulo}>
           <table className="min-w-full divide-y divide-gray-200 text-sm">
             <thead className="bg-gray-50">
               <tr>
                 {colunas.map((coluna) => (
                   <th
                     key={coluna.key}
-                    className="px-4 py-2 text-left font-medium text-gray-600"
+                    scope="col"
+                    className="whitespace-nowrap px-4 py-2 text-left font-medium text-gray-700"
                   >
                     {coluna.label}
                   </th>
                 ))}
 
-                {mostrarAcoes && <th className="px-4 py-2" />}
+                {mostrarAcoes && (
+                  <th scope="col" className="px-4 py-2">
+                    <span className="sr-only">Ações</span>
+                  </th>
+                )}
               </tr>
             </thead>
 
@@ -254,25 +265,17 @@ export default function CrudTable({
                   ))}
 
                   {mostrarAcoes && (
-                    <td className="px-4 py-2 text-right whitespace-nowrap">
+                    <td className="whitespace-nowrap px-4 py-2 text-right">
                       {podeEscrever && (
-                        <button
-                          type="button"
-                          className="text-blue-600 hover:underline mr-3"
-                          onClick={() => abrirEdicao(registro)}
-                        >
+                        <Botao type="button" variante="link" className="mr-3" aria-label={`Editar ${nomeDoRegistro(registro, colunas)}`} onClick={() => abrirEdicao(registro)}>
                           Editar
-                        </button>
+                        </Botao>
                       )}
 
                       {podeExcluir && (
-                        <button
-                          type="button"
-                          className="text-red-600 hover:underline"
-                          onClick={() => excluir(registro.id)}
-                        >
+                        <Botao type="button" variante="linkPerigo" aria-label={`Excluir ${nomeDoRegistro(registro, colunas)}`} onClick={() => excluir(registro.id)}>
                           Excluir
-                        </button>
+                        </Botao>
                       )}
                     </td>
                   )}
@@ -283,7 +286,7 @@ export default function CrudTable({
                 <tr>
                   <td
                     colSpan={colunas.length + (mostrarAcoes ? 1 : 0)}
-                    className="px-4 py-6 text-center text-gray-400"
+                    className="px-4 py-6 text-center text-gray-600"
                   >
                     Nenhum registro encontrado.
                   </td>

@@ -4,8 +4,10 @@ import { useAuth } from "../auth/useAuth";
 import * as authService from "../services/authService";
 import Botao from "../components/Botao";
 import InputField from "../components/InputField";
+import { useTituloPagina } from "../hooks/useTituloPagina";
 
 export default function Cadastro() {
+  useTituloPagina("Criar conta");
   const location = useLocation();
   const [etapa, setEtapa] = useState(location.state?.verificar ? "verificar" : "cadastro");
   const [nome, setNome] = useState("");
@@ -70,8 +72,8 @@ export default function Cadastro() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-100">
-      <div className="w-full max-w-sm rounded-lg bg-white p-8 shadow-md">
+    <div className="flex min-h-screen items-center justify-center bg-gray-100 px-4 py-8">
+      <div className="w-full max-w-sm rounded-lg bg-white p-6 shadow-md sm:p-8">
         {etapa === "cadastro" && (
           <form onSubmit={handleCadastro}>
             <h1 className="mb-1 text-xl font-bold text-gray-900">Criar conta</h1>
@@ -112,7 +114,7 @@ export default function Cadastro() {
               />
             </div>
 
-            {erro && <p className="mt-3 text-sm text-red-600">{erro}</p>}
+            {erro && <p role="alert" className="mt-3 text-sm text-red-700">{erro}</p>}
 
             <Botao type="submit" className="mt-6 w-full" disabled={carregando}>
               {carregando ? "Criando conta…" : "Criar conta"}
@@ -144,7 +146,7 @@ export default function Cadastro() {
               required
             />
 
-            {erro && <p className="mt-3 text-sm text-red-600">{erro}</p>}
+            {erro && <p role="alert" className="mt-3 text-sm text-red-700">{erro}</p>}
 
             <Botao type="submit" className="mt-6 w-full" disabled={carregando}>
               {carregando ? "Confirmando…" : "Confirmar e entrar"}
@@ -153,7 +155,7 @@ export default function Cadastro() {
             <button
               type="button"
               onClick={handleReenviar}
-              className="mt-3 w-full text-center text-xs text-gray-400 hover:underline"
+              className="mt-3 w-full rounded text-center text-xs text-gray-600 hover:underline"
             >
               Não recebeu o código? Enviar novamente
             </button>

@@ -7,6 +7,11 @@ import StatusBadge from "../components/StatusBadge";
 import AprovacaoBadge from "../components/AprovacaoBadge";
 import Botao from "../components/Botao";
 import EncaminharModal from "../components/EncaminharModal";
+import InputField from "../components/InputField";
+import SelectField from "../components/SelectField";
+import TextAreaField from "../components/TextAreaField";
+import { Carregando, ErroCarregar } from "../components/Estados";
+import { useTituloPagina } from "../hooks/useTituloPagina";
 import { useAuth } from "../auth/useAuth";
 import { PapelUsuario } from "../enum/PapelUsuario";
 import { temPermissao } from "../utils/permissoes";
@@ -32,10 +37,17 @@ export default function TicketDetalhe() {
   const [atendentes, setAtendentes] = useState([]);
   const [encaminhando, setEncaminhando] = useState(false);
   const [novoColaboradorId, setNovoColaboradorId] = useState("");
+  const [falhou, setFalhou] = useState(false);
   const podeGerenciar = temPermissao(usuario, "tickets.tratar");
+  useTituloPagina(ticket ? `Chamado #${ticket.id}` : "Chamado");
 
   async function carregar() {
-    setTicket(await ticketService.buscar(id));
+    try {
+      setTicket(await ticketService.buscar(id));
+      setFalhou(false);
+    } catch {
+      setFalhou(true);
+    }
   }
 
   useEffect(() => {
@@ -43,7 +55,10 @@ export default function TicketDetalhe() {
     // dentro do corpo do efeito (react-hooks/set-state-in-effect).
     Promise.resolve().then(carregar);
     if (usuario.papel === PapelUsuario.ADMIN) {
-      usuarioService.listar().then((lista) => setTecnicos(lista.filter((u) => u.papel === PapelUsuario.TECNICO)));
+      usuarioService
+        .listar()
+        .then((lista) => setTecnicos(lista.filter((u) => u.papel === PapelUsuario.TECNICO)))
+        .catch(() => {});
     }
     if (podeGerenciar) {
       usuarioService.atendentes().then(setAtendentes).catch(() => {});
@@ -52,9 +67,13 @@ export default function TicketDetalhe() {
   }, [id]);
 
   async function alterarStatus(status) {
-    await ticketService.alterarStatus(id, status);
-    notificar("Status atualizado");
-    carregar();
+    try {
+      await ticketService.alterarStatus(id, status);
+      notificar("Status atualizado");
+      carregar();
+    } catch (err) {
+      notificar(err.response?.data?.erro || "Não foi possível alterar o status", "erro");
+    }
   }
 
   async function suspender(e) {
@@ -172,20 +191,33 @@ export default function TicketDetalhe() {
   }
 
   async function atribuir(tecnicoId) {
-    await ticketService.atribuir(id, tecnicoId);
-    notificar("Chamado atribuído");
-    carregar();
+    // "Sem atendente" no seletor não é uma atribuição (a API recusaria o id 0).
+    if (!tecnicoId) return;
+    try {
+      await ticketService.atribuir(id, tecnicoId);
+      notificar("Chamado atribuído");
+      carregar();
+    } catch (err) {
+      notificar(err.response?.data?.erro || "Não foi possível atribuir o chamado", "erro");
+    }
   }
 
   async function enviarComentario(e) {
     e.preventDefault();
     if (!mensagem.trim()) return;
-    await comentarioService.criar(id, mensagem);
-    setMensagem("");
-    carregar();
+    try {
+      await comentarioService.criar(id, mensagem);
+      setMensagem("");
+      carregar();
+    } catch (err) {
+      notificar(err.response?.data?.erro || "Não foi possível enviar o comentário", "erro");
+    }
   }
 
-  if (!ticket) return <p className="text-sm text-gray-500">Carregando…</p>;
+  if (falhou && !ticket) {
+    return <ErroCarregar texto="Não foi possível carregar o chamado." onTentarDeNovo={carregar} />;
+  }
+  if (!ticket) return <Carregando />;
 
   const colaboradores = ticket.colaboradores ?? [];
   // Mesmas travas da API: chamado fechado ou parado na aprovação do gestor.
@@ -196,9 +228,11 @@ export default function TicketDetalhe() {
 
   return (
     <div className="mx-auto max-w-2xl">
-      <div className="mb-4 flex items-start justify-between">
-        <h1 className="text-xl font-semibold text-gray-900">{ticket.titulo}</h1>
-        <div className="flex flex-col items-end gap-1">
+      <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <h1 className="text-xl font-semibold text-gray-900">
+          <span className="font-normal text-gray-500">#{ticket.id}</span> {ticket.titulo}
+        </h1>
+        <div className="flex flex-wrap gap-1 sm:flex-col sm:items-end">
           <StatusBadge status={ticket.status} />
           <AprovacaoBadge ticket={ticket} />
         </div>
@@ -206,7 +240,7 @@ export default function TicketDetalhe() {
 
       <div className="mb-6 rounded-lg border border-gray-200 bg-white p-4">
         <p className="mb-4 text-sm text-gray-700">{ticket.descricao}</p>
-        <div className="grid grid-cols-2 gap-2 text-xs text-gray-500">
+        <div className="grid grid-cols-1 gap-2 text-xs text-gray-600 sm:grid-cols-2">
           <span>Categoria: {ticket.categoria?.nome}</span>
           <span>Prioridade: {ticket.prioridade?.nome}</span>
           <span>Setor: {ticket.departamento?.nome || "Não informado"}</span>
@@ -239,26 +273,24 @@ export default function TicketDetalhe() {
           <p className="text-xs">Enquanto isso o atendimento fica parado.</p>
 
           {podeDecidirAprovacao(usuario, ticket) && !rejeitando && (
-            <div className="mt-3 flex gap-2">
-              <Botao onClick={aprovar} disabled={enviando}>Aprovar</Botao>
-              <Botao variante="perigo" onClick={() => setRejeitando(true)} disabled={enviando}>Rejeitar</Botao>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Botao type="button" onClick={aprovar} disabled={enviando}>Aprovar</Botao>
+              <Botao type="button" variante="perigo" onClick={() => setRejeitando(true)} disabled={enviando}>Rejeitar</Botao>
             </div>
           )}
 
           {rejeitando && (
             <form onSubmit={rejeitar} className="mt-3 flex flex-col gap-2">
-              <label htmlFor="motivo-rejeicao" className="font-medium">Motivo da rejeição</label>
-              <textarea
+              <TextAreaField
                 id="motivo-rejeicao"
-                rows={3}
+                label="Motivo da rejeição"
                 required
                 maxLength={1000}
-                className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900"
                 value={motivoRejeicao}
                 onChange={(e) => setMotivoRejeicao(e.target.value)}
+                ajuda="Rejeitar encerra o chamado e o solicitante é avisado com o motivo."
               />
-              <p className="text-xs">Rejeitar encerra o chamado e o solicitante é avisado com o motivo.</p>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <Botao type="submit" variante="perigo" disabled={enviando || !motivoRejeicao.trim()}>Confirmar rejeição</Botao>
                 <Botao type="button" variante="secundario" onClick={() => { setRejeitando(false); setMotivoRejeicao(""); }}>Cancelar</Botao>
               </div>
@@ -275,97 +307,82 @@ export default function TicketDetalhe() {
       )}
 
       {podeGerenciar && !bloqueadoPorAprovacao(ticket) && (
-        <div className="mb-6 flex flex-wrap items-center gap-3 rounded-lg border border-gray-200 bg-white p-4">
+        <section aria-label="Atendimento" className="mb-6 flex flex-col gap-3 rounded-lg border border-gray-200 bg-white p-4 sm:flex-row sm:flex-wrap sm:items-end">
           {podeRetomar(ticket) ? (
-            <Botao onClick={retomar} disabled={enviando}>Retomar</Botao>
+            <Botao type="button" onClick={retomar} disabled={enviando}>Retomar</Botao>
           ) : (
-            <label className="flex items-center gap-2 text-sm text-gray-700">
-              Status:
-              <select
-                className="rounded-md border border-gray-300 px-2 py-1 text-sm"
-                value={ticket.status}
-                onChange={(e) => alterarStatus(e.target.value)}
-              >
-                {STATUS_SELECIONAVEIS.map((s) => (
-                  <option key={s} value={s}>{STATUS_LABEL[s]}</option>
-                ))}
-              </select>
-            </label>
+            <SelectField
+              label="Status"
+              value={ticket.status}
+              onChange={(e) => alterarStatus(e.target.value)}
+              options={STATUS_SELECIONAVEIS.map((s) => ({ value: s, label: STATUS_LABEL[s] }))}
+            />
           )}
 
           {podeSuspender(ticket) && !suspendendo && (
-            <Botao variante="secundario" onClick={() => setSuspendendo(true)}>Suspender</Botao>
+            <Botao type="button" variante="secundario" onClick={() => setSuspendendo(true)}>Suspender</Botao>
           )}
 
           {ticket.status !== "FECHADO" && (
-            <Botao variante="secundario" onClick={() => setEncaminhando(true)} disabled={enviando}>Encaminhar</Botao>
+            <Botao type="button" variante="secundario" onClick={() => setEncaminhando(true)} disabled={enviando}>Encaminhar</Botao>
           )}
 
           {usuario.papel === PapelUsuario.TECNICO && !ticket.tecnico && (
-            <Botao onClick={() => atribuir(usuario.id)}>Atribuir a mim</Botao>
+            <Botao type="button" onClick={() => atribuir(usuario.id)}>Atribuir a mim</Botao>
           )}
 
           {usuario.papel === PapelUsuario.ADMIN && (
-            <label className="flex items-center gap-2 text-sm text-gray-700">
-              Atribuir a:
-              <select
-                className="rounded-md border border-gray-300 px-2 py-1 text-sm"
-                value={ticket.tecnico?.id || ""}
-                onChange={(e) => atribuir(Number(e.target.value))}
-              >
-                <option value="">Não atribuído</option>
-                {tecnicos.map((t) => (
-                  <option key={t.id} value={t.id}>{t.nome}</option>
-                ))}
-              </select>
-            </label>
+            <SelectField
+              label="Atribuir a"
+              placeholder="Sem atendente"
+              value={ticket.tecnico?.id || ""}
+              onChange={(e) => atribuir(Number(e.target.value))}
+              options={tecnicos.map((t) => ({ value: t.id, label: t.nome }))}
+            />
           )}
 
           {suspendendo && (
             <form onSubmit={suspender} className="flex w-full flex-col gap-2">
-              <label htmlFor="motivo-suspensao" className="text-sm font-medium text-gray-700">
-                Motivo da suspensão
-              </label>
-              <textarea
+              <TextAreaField
                 id="motivo-suspensao"
-                rows={3}
+                label="Motivo da suspensão"
                 required
                 maxLength={1000}
-                className="rounded-md border border-gray-300 px-3 py-2 text-sm"
                 placeholder="Ex.: aguardando peça do fornecedor"
                 value={motivo}
                 onChange={(e) => setMotivo(e.target.value)}
+                ajuda="O motivo fica registrado como comentário e o solicitante é avisado."
               />
-              <p className="text-xs text-gray-500">O motivo fica registrado como comentário e o solicitante é avisado.</p>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <Botao type="submit" disabled={enviando || !motivo.trim()}>Confirmar suspensão</Botao>
                 <Botao type="button" variante="secundario" onClick={cancelarSuspensao}>Cancelar</Botao>
               </div>
             </form>
           )}
-        </div>
+        </section>
       )}
 
       {(colaboradores.length > 0 || podeMexerEmColaboradores) && (
         <section aria-labelledby="titulo-colaboradores" className="mb-6 rounded-lg border border-gray-200 bg-white p-4">
           <h2 id="titulo-colaboradores" className="mb-2 text-sm font-semibold text-gray-900">Colaboradores</h2>
           {colaboradores.length === 0 ? (
-            <p className="mb-3 text-sm text-gray-400">Nenhum colaborador neste chamado.</p>
+            <p className="mb-3 text-sm text-gray-500">Nenhum colaborador neste chamado.</p>
           ) : (
             <ul className="mb-3 flex flex-col gap-1">
               {colaboradores.map((c) => (
                 <li key={c.id} className="flex items-center justify-between text-sm text-gray-800">
                   <span>{c.nome}</span>
                   {podeMexerEmColaboradores && (
-                    <button
+                    <Botao
                       type="button"
-                      className="text-xs font-medium text-red-600 hover:underline disabled:opacity-50"
+                      variante="linkPerigo"
+                      className="text-xs"
                       aria-label={`Remover ${c.nome} dos colaboradores`}
                       onClick={() => removerColaborador(c)}
                       disabled={enviando}
                     >
                       Remover
-                    </button>
+                    </Botao>
                   )}
                 </li>
               ))}
@@ -373,20 +390,14 @@ export default function TicketDetalhe() {
           )}
 
           {podeMexerEmColaboradores && (
-            <form onSubmit={adicionarColaborador} className="flex flex-wrap items-end gap-2">
-              <label className="flex flex-col gap-1 text-sm text-gray-700">
-                <span className="font-medium">Adicionar colaborador</span>
-                <select
-                  className="rounded-md border border-gray-300 px-2 py-1 text-sm"
-                  value={novoColaboradorId}
-                  onChange={(e) => setNovoColaboradorId(e.target.value)}
-                >
-                  <option value="">Selecione…</option>
-                  {candidatosColaborador.map((a) => (
-                    <option key={a.id} value={a.id}>{a.nome}</option>
-                  ))}
-                </select>
-              </label>
+            <form onSubmit={adicionarColaborador} className="flex flex-col gap-2 sm:flex-row sm:items-end">
+              <SelectField
+                label="Adicionar colaborador"
+                placeholder="Selecione…"
+                value={novoColaboradorId}
+                onChange={(e) => setNovoColaboradorId(e.target.value)}
+                options={candidatosColaborador.map((a) => ({ value: a.id, label: a.nome }))}
+              />
               <Botao type="submit" disabled={enviando || !novoColaboradorId}>Adicionar</Botao>
             </form>
           )}
@@ -402,24 +413,27 @@ export default function TicketDetalhe() {
         />
       )}
 
-      <h2 className="mb-2 text-lg font-semibold text-gray-900">Comentários</h2>
+      <h2 id="titulo-comentarios" className="mb-2 text-lg font-semibold text-gray-900">Comentários</h2>
       <div className="mb-4 flex flex-col gap-2">
         {ticket.comentarios?.map((c) => (
           <div key={c.id} className="rounded-md border border-gray-200 bg-white p-3 text-sm">
             <p className="mb-1 text-xs font-medium text-gray-500">{c.usuario.nome} — {formatDate(c.createdAt)}</p>
-            <p className="text-gray-800">{c.mensagem}</p>
+            <p className="whitespace-pre-line break-words text-gray-800">{c.mensagem}</p>
           </div>
         ))}
-        {ticket.comentarios?.length === 0 && <p className="text-sm text-gray-400">Nenhum comentário ainda.</p>}
+        {ticket.comentarios?.length === 0 && <p className="text-sm text-gray-500">Nenhum comentário ainda.</p>}
       </div>
 
-      <form onSubmit={enviarComentario} className="flex gap-2">
-        <input
-          className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm"
-          placeholder="Escreva um comentário…"
-          value={mensagem}
-          onChange={(e) => setMensagem(e.target.value)}
-        />
+      <form onSubmit={enviarComentario} aria-labelledby="titulo-comentarios" className="flex flex-col gap-2 sm:flex-row sm:items-end">
+        <label htmlFor="novo-comentario" className="sr-only">Novo comentário</label>
+        <div className="flex-1">
+          <InputField
+            id="novo-comentario"
+            placeholder="Escreva um comentário…"
+            value={mensagem}
+            onChange={(e) => setMensagem(e.target.value)}
+          />
+        </div>
         <Botao type="submit">Enviar</Botao>
       </form>
     </div>

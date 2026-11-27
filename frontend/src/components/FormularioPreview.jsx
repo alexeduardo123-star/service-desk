@@ -1,13 +1,19 @@
 // Mostra como o formulário vai aparecer para quem abrir o chamado.
 // Recebe campos no formato { rotulo, tipo, obrigatorio, opcoes }.
-const classeEntrada =
-  "rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none";
+import { CLASSE_CAMPO } from "../hooks/useCampo";
+
+const classeEntrada = `${CLASSE_CAMPO} border-gray-300`;
 
 function Rotulo({ campo }) {
   return (
     <span className="font-medium">
       {campo.rotulo || "Campo sem rótulo"}
-      {campo.obrigatorio && <span className="text-red-600"> *</span>}
+      {campo.obrigatorio && (
+        <>
+          <span aria-hidden="true" className="text-red-700"> *</span>
+          <span className="sr-only"> (obrigatório)</span>
+        </>
+      )}
     </span>
   );
 }
@@ -51,7 +57,7 @@ function CampoPrevia({ campo }) {
 
 export default function FormularioPreview({ campos }) {
   if (!campos?.length) {
-    return <p className="text-sm text-gray-400">Nenhum campo adicionado.</p>;
+    return <p className="text-sm text-gray-500">Nenhum campo adicionado.</p>;
   }
 
   return (

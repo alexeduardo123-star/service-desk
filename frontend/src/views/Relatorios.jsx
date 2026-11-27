@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Botao from "../components/Botao";
+import CabecalhoPagina from "../components/CabecalhoPagina";
+import { Carregando } from "../components/Estados";
 import InputField from "../components/InputField";
 import SelectField from "../components/SelectField";
 import Paginacao from "../components/Paginacao";
@@ -209,24 +211,22 @@ export default function Relatorios() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
-        <div>
-          <h1 className="text-xl font-semibold text-gray-900">Relatórios</h1>
-          <p className="text-sm text-gray-500">Chamados por período, com indicadores de SLA e exportação.</p>
-        </div>
-        <div className="flex gap-2">
-          <Botao variante="secundario" onClick={exportarCsv} disabled={!relatorio || relatorio.total === 0}>
-            Exportar CSV
-          </Botao>
-          <Botao variante="secundario" onClick={() => window.print()} disabled={!relatorio}>
-            Imprimir
-          </Botao>
-        </div>
-      </div>
+      <CabecalhoPagina
+        titulo="Relatórios"
+        descricao="Chamados por período, com indicadores de SLA e exportação."
+        className="!mb-0 print:hidden"
+      >
+        <Botao type="button" variante="secundario" onClick={exportarCsv} disabled={!relatorio || relatorio.total === 0}>
+          Exportar CSV
+        </Botao>
+        <Botao type="button" variante="secundario" onClick={() => window.print()} disabled={!relatorio}>
+          Imprimir
+        </Botao>
+      </CabecalhoPagina>
 
       {/* Cabeçalho que só aparece na impressão */}
       <div className="hidden print:block">
-        <h1 className="text-xl font-semibold text-gray-900">Relatório de chamados</h1>
+        <p className="text-xl font-semibold text-gray-900">Relatório de chamados</p>
         {relatorio && (
           <p className="text-sm text-gray-600">
             Gerado em {formatDate(relatorio.geradoEm)} por {relatorio.geradoPor}
@@ -317,7 +317,7 @@ export default function Relatorios() {
             onChange={(e) => setFormSalvar({ ...formSalvar, descricao: e.target.value })}
             maxLength={255}
           />
-          <div className="flex gap-2 sm:col-span-2">
+          <div className="flex flex-wrap gap-2 sm:col-span-2">
             <Botao type="submit" disabled={salvando || formSalvar.nome.trim().length < 3}>
               {salvando ? "Salvando…" : "Salvar"}
             </Botao>
@@ -333,7 +333,7 @@ export default function Relatorios() {
         <p className="mb-3 text-xs text-gray-500">Filtros que você guardou para gerar o mesmo relatório de novo com um clique.</p>
 
         {salvos.length === 0 ? (
-          <p className="text-sm text-gray-400">Nenhum relatório salvo ainda.</p>
+          <p className="text-sm text-gray-500">Nenhum relatório salvo ainda.</p>
         ) : (
           <ul className="divide-y divide-gray-100">
             {salvos.map((salvo) => (
@@ -360,7 +360,7 @@ export default function Relatorios() {
                       />
                       Substituir pelos filtros atuais da tela
                     </label>
-                    <div className="flex gap-2 sm:col-span-2">
+                    <div className="flex flex-wrap gap-2 sm:col-span-2">
                       <Botao type="submit" disabled={salvando || edicao.nome.trim().length < 3}>
                         {salvando ? "Salvando…" : "Salvar alterações"}
                       </Botao>
@@ -378,19 +378,21 @@ export default function Relatorios() {
                         {resumirFiltros(filtrosDoSalvo(salvo.filtros))} filtro(s)
                       </p>
                     </div>
-                    <div className="flex gap-2">
-                      <Botao variante="secundario" onClick={() => aplicarSalvo(salvo)}>
+                    <div className="flex flex-wrap gap-2">
+                      <Botao type="button" variante="secundario" aria-label={`Aplicar ${salvo.nome}`} onClick={() => aplicarSalvo(salvo)}>
                         Aplicar
                       </Botao>
                       <Botao
+                        type="button"
                         variante="secundario"
+                        aria-label={`Editar ${salvo.nome}`}
                         onClick={() =>
                           setEdicao({ id: salvo.id, nome: salvo.nome, descricao: salvo.descricao ?? "", substituirFiltros: false })
                         }
                       >
                         Editar
                       </Botao>
-                      <Botao variante="perigo" onClick={() => excluirSalvo(salvo)}>
+                      <Botao type="button" variante="perigo" aria-label={`Excluir ${salvo.nome}`} onClick={() => excluirSalvo(salvo)}>
                         Excluir
                       </Botao>
                     </div>
@@ -408,7 +410,7 @@ export default function Relatorios() {
         </p>
       )}
 
-      {carregando && !relatorio && <p className="text-sm text-gray-500">Gerando relatório…</p>}
+      {carregando && !relatorio && <Carregando texto="Gerando relatório…" />}
 
       {relatorio && resumo && (
         <>
@@ -455,23 +457,23 @@ export default function Relatorios() {
           <section className="rounded-lg border border-gray-200 bg-white p-4">
             <h2 className="mb-3 text-sm font-semibold text-gray-900">Chamados ({relatorio.total})</h2>
             {relatorio.total === 0 ? (
-              <p className="py-6 text-center text-sm text-gray-400">Nenhum chamado encontrado com esses filtros.</p>
+              <p className="py-6 text-center text-sm text-gray-500">Nenhum chamado encontrado com esses filtros.</p>
             ) : (
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Chamados do relatório">
                 <table className="w-full text-left text-sm">
-                  <thead className="border-b border-gray-200 text-xs uppercase text-gray-500">
+                  <thead className="whitespace-nowrap border-b border-gray-200 text-xs uppercase text-gray-600">
                     <tr>
-                      <th className="py-2 pr-3">#</th>
-                      <th className="py-2 pr-3">Título</th>
-                      <th className="py-2 pr-3">Status</th>
-                      <th className="py-2 pr-3">Categoria</th>
-                      <th className="py-2 pr-3">Prioridade</th>
-                      <th className="py-2 pr-3">Setor</th>
-                      <th className="py-2 pr-3">Solicitante</th>
-                      <th className="py-2 pr-3">Atendente</th>
-                      <th className="py-2 pr-3">Aberto em</th>
-                      <th className="py-2 pr-3">Resolução</th>
-                      <th className="py-2">SLA</th>
+                      <th scope="col" className="py-2 pr-3">#</th>
+                      <th scope="col" className="py-2 pr-3">Título</th>
+                      <th scope="col" className="py-2 pr-3">Status</th>
+                      <th scope="col" className="py-2 pr-3">Categoria</th>
+                      <th scope="col" className="py-2 pr-3">Prioridade</th>
+                      <th scope="col" className="py-2 pr-3">Setor</th>
+                      <th scope="col" className="py-2 pr-3">Solicitante</th>
+                      <th scope="col" className="py-2 pr-3">Atendente</th>
+                      <th scope="col" className="py-2 pr-3">Aberto em</th>
+                      <th scope="col" className="py-2 pr-3">Resolução</th>
+                      <th scope="col" className="py-2">SLA</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">

@@ -1,13 +1,11 @@
-const VARIANTES = {
-  primario: "bg-blue-600 hover:bg-blue-700 text-white",
-  perigo: "bg-red-600 hover:bg-red-700 text-white",
-  secundario: "bg-gray-200 hover:bg-gray-300 text-gray-800",
-};
+import { VARIANTES_BOTAO } from "../constants/botao";
 
+// Botão padrão do sistema. O `type` segue o padrão do HTML (submit dentro de
+// formulário); botões que não enviam passam `type="button"`.
 export default function Botao({ variante = "primario", className = "", ...props }) {
   return (
     <button
-      className={`rounded-md px-4 py-2 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${VARIANTES[variante]} ${className}`}
+      className={`text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${VARIANTES_BOTAO[variante]} ${className}`}
       {...props}
     />
   );

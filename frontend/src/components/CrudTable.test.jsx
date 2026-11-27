@@ -61,7 +61,7 @@ describe("CrudTable", () => {
 
     await screen.findByText("Contrato de manutenção");
 
-    fireEvent.click(screen.getByRole("button", { name: "Editar" }));
+    fireEvent.click(screen.getByRole("button", { name: "Editar Contrato de manutenção" }));
 
     expect(screen.getByLabelText("Início")).toHaveValue("2026-11-09");
     expect(screen.getByLabelText("Fim")).toHaveValue("2027-11-09");
@@ -77,7 +77,7 @@ describe("CrudTable", () => {
 
     await screen.findByText("Contrato de manutenção");
 
-    fireEvent.click(screen.getByRole("button", { name: "Editar" }));
+    fireEvent.click(screen.getByRole("button", { name: "Editar Contrato de manutenção" }));
 
     fireEvent.change(screen.getByLabelText("Título"), {
       target: { value: "Contrato atualizado" },

@@ -5,7 +5,7 @@ import { fatiasDonut } from "../../utils/charts";
 export default function DonutChart({ itens, rotuloTotal = "total", vazio = "Sem dados no período." }) {
   const coloridos = (itens ?? []).map((item, i) => ({ ...item, cor: item.cor ?? PALETA[i % PALETA.length] }));
   const total = coloridos.reduce((soma, i) => soma + i.valor, 0);
-  if (total === 0) return <p className="py-6 text-center text-sm text-gray-400">{vazio}</p>;
+  if (total === 0) return <p className="py-6 text-center text-sm text-gray-500">{vazio}</p>;
 
   const fatias = fatiasDonut(coloridos);
 

@@ -1,11 +1,21 @@
-export default function SelectField({ label, options, placeholder, className = "", children, ...props }) {
+import { CLASSE_CAMPO, borda, useCampo } from "../hooks/useCampo";
+import RodapeCampo from "./RodapeCampo";
+
+export default function SelectField({ label, options, placeholder, error, ajuda, id, className = "", children, ...props }) {
+  const { idCampo, idAjuda, idErro, acessibilidade } = useCampo({
+    id,
+    error,
+    ajuda,
+    describedBy: props["aria-describedby"],
+  });
   return (
-    <label className="flex flex-col gap-1 text-sm text-gray-700">
-      {label && <span className="font-medium">{label}</span>}
-      <select
-        className={`rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none ${className}`}
-        {...props}
-      >
+    <div className="flex flex-col gap-1 text-sm text-gray-700">
+      {label && (
+        <label htmlFor={idCampo} className="font-medium">
+          {label}
+        </label>
+      )}
+      <select className={`${CLASSE_CAMPO} ${borda(error)} ${className}`} {...props} {...acessibilidade}>
         {placeholder !== undefined && <option value="">{placeholder}</option>}
         {options?.map((op) => (
           <option key={op.value} value={op.value}>
@@ -14,6 +24,7 @@ export default function SelectField({ label, options, placeholder, className = "
         ))}
         {children}
       </select>
-    </label>
+      <RodapeCampo ajuda={ajuda} error={error} idAjuda={idAjuda} idErro={idErro} />
+    </div>
   );
 }

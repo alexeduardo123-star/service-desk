@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import Botao from "../components/Botao";
+import CabecalhoPagina from "../components/CabecalhoPagina";
+import { Carregando, ErroCarregar } from "../components/Estados";
 import InputField from "../components/InputField";
 import SelectField from "../components/SelectField";
 import Toggle from "../components/Toggle";
@@ -20,7 +22,7 @@ const ABAS = [
 ];
 
 const OPCOES_NOTIFICACAO = [
-  { name: "notificarNovoTicket", label: "Novos chamados", descricao: "Aviso quando um chamado for aberto (técnicos e administradores)." },
+  { name: "notificarNovoTicket", label: "Novos chamados", descricao: "Aviso quando um chamado for aberto (atendentes e administradores)." },
   { name: "notificarAtribuicao", label: "Atribuições", descricao: "Aviso quando um chamado for atribuído ou encaminhado a você, quando você entrar como colaborador ou quando o seu chamado mudar de atendente." },
   { name: "notificarStatus", label: "Mudanças de status", descricao: "Aviso quando um chamado em que você está envolvido (como solicitante, atendente ou colaborador) mudar de status." },
   { name: "notificarComentario", label: "Novos comentários", descricao: "Aviso quando alguém comentar em um chamado em que você está envolvido." },
@@ -53,7 +55,7 @@ function Secao({ titulo, descricao, children }) {
 function InfoLinha({ rotulo, valor }) {
   return (
     <div>
-      <dt className="text-xs uppercase text-gray-400">{rotulo}</dt>
+      <dt className="text-xs uppercase text-gray-500">{rotulo}</dt>
       <dd className="text-sm text-gray-800">{valor || "-"}</dd>
     </div>
   );
@@ -69,6 +71,20 @@ export default function Configuracoes() {
   const [senhas, setSenhas] = useState({ senhaAtual: "", novaSenha: "", confirmacao: "" });
   const [errosSenha, setErrosSenha] = useState({});
   const [salvando, setSalvando] = useState(false);
+  const [falhou, setFalhou] = useState(false);
+  // Incrementado pelo "Tentar de novo" para refazer a busca.
+  const [tentativa, setTentativa] = useState(0);
+
+  // Setas esquerda/direita, Home e End trocam de aba (padrão de abas do WAI-ARIA).
+  function teclaNasAbas(e) {
+    const indice = ABAS.findIndex((a) => a.id === aba);
+    const destino = { ArrowRight: indice + 1, ArrowLeft: indice - 1, Home: 0, End: ABAS.length - 1 }[e.key];
+    if (destino === undefined) return;
+    e.preventDefault();
+    const proxima = ABAS[(destino + ABAS.length) % ABAS.length];
+    setAba(proxima.id);
+    document.getElementById(`aba-${proxima.id}`)?.focus();
+  }
 
   useEffect(() => {
     let ativo = true;
@@ -78,13 +94,18 @@ export default function Configuracoes() {
         setPerfil(me);
         setForm({ nome: me.nome, telefone: formatarTelefone(me.telefone), cargo: me.cargo ?? "" });
         setConfig(cfg);
+        setFalhou(false);
       })
-      .catch(() => notificar("Erro ao carregar suas configurações", "erro"));
+      .catch(() => {
+        if (!ativo) return;
+        setFalhou(true);
+        notificar("Erro ao carregar suas configurações", "erro");
+      });
     return () => {
       ativo = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [tentativa]);
 
   async function salvarPerfil(e) {
     e.preventDefault();
@@ -149,24 +170,43 @@ export default function Configuracoes() {
     }
   }
 
-  if (!perfil || !config) return <p className="text-sm text-gray-500">Carregando…</p>;
+  if (!perfil || !config) {
+    return (
+      <div className="max-w-3xl">
+        <CabecalhoPagina titulo="Configurações" />
+        {falhou ? (
+          <ErroCarregar texto="Não foi possível carregar suas configurações." onTentarDeNovo={() => setTentativa((t) => t + 1)} />
+        ) : (
+          <Carregando />
+        )}
+      </div>
+    );
+  }
 
   const agoraNoFuso = new Date().toLocaleString("pt-BR", { timeZone: config.fusoHorario });
 
   return (
     <div className="max-w-3xl">
-      <h1 className="mb-1 text-xl font-semibold text-gray-900">Configurações</h1>
-      <p className="mb-6 text-sm text-gray-500">Gerencie seu perfil, suas notificações e as preferências da conta.</p>
+      <CabecalhoPagina titulo="Configurações" descricao="Gerencie seu perfil, suas notificações e as preferências da conta." />
 
-      <div className="mb-6 flex gap-1 border-b border-gray-200" role="tablist">
+      <div
+        className="mb-6 flex gap-1 overflow-x-auto border-b border-gray-200"
+        role="tablist"
+        aria-label="Seções das configurações"
+        onKeyDown={teclaNasAbas}
+      >
         {ABAS.map((item) => (
           <button
             key={item.id}
+            id={`aba-${item.id}`}
+            type="button"
             role="tab"
             aria-selected={aba === item.id}
+            aria-controls="painel-configuracoes"
+            tabIndex={aba === item.id ? 0 : -1}
             onClick={() => setAba(item.id)}
-            className={`-mb-px border-b-2 px-4 py-2 text-sm font-medium ${
-              aba === item.id ? "border-blue-600 text-blue-600" : "border-transparent text-gray-500 hover:text-gray-800"
+            className={`-mb-px shrink-0 border-b-2 px-4 py-2 text-sm font-medium ${
+              aba === item.id ? "border-blue-600 text-blue-700" : "border-transparent text-gray-600 hover:text-gray-900"
             }`}
           >
             {item.label}
@@ -174,9 +214,11 @@ export default function Configuracoes() {
         ))}
       </div>
 
+      <div id="painel-configuracoes" role="tabpanel" aria-labelledby={`aba-${aba}`}>
+
       {aba === "perfil" && (
         <div className="flex flex-col gap-4">
-          <Secao titulo="Dados pessoais" descricao="Essas informações aparecem para os técnicos nos seus chamados.">
+          <Secao titulo="Dados pessoais" descricao="Essas informações aparecem para os atendentes nos seus chamados.">
             <form onSubmit={salvarPerfil} className="grid gap-3 sm:grid-cols-2">
               <InputField
                 label="Nome"
@@ -184,7 +226,7 @@ export default function Configuracoes() {
                 value={form.nome}
                 onChange={(e) => setForm({ ...form, nome: e.target.value })}
               />
-              <InputField label="Email" value={perfil.email} disabled className="bg-gray-100 text-gray-500" />
+              <InputField label="Email" value={perfil.email} disabled />
               <InputField
                 label="Telefone"
                 placeholder="(49) 99999-0000"
@@ -230,6 +272,7 @@ export default function Configuracoes() {
           </div>
           <div className="mt-4">
             <Botao
+              type="button"
               disabled={salvando}
               onClick={() =>
                 salvarConfig(
@@ -261,8 +304,9 @@ export default function Configuracoes() {
             />
           </div>
           <p className="mt-2 text-xs text-gray-500">Agora neste fuso: {agoraNoFuso}</p>
-          <div className="mt-4 flex gap-2">
+          <div className="mt-4 flex flex-wrap gap-2">
             <Botao
+              type="button"
               disabled={salvando}
               onClick={() =>
                 salvarConfig(
@@ -273,7 +317,7 @@ export default function Configuracoes() {
             >
               Salvar preferências
             </Botao>
-            <Botao variante="secundario" onClick={restaurarPadrao}>
+            <Botao type="button" variante="secundario" onClick={restaurarPadrao}>
               Restaurar padrão
             </Botao>
           </div>
@@ -315,6 +359,7 @@ export default function Configuracoes() {
           </form>
         </Secao>
       )}
+      </div>
     </div>
   );
 }

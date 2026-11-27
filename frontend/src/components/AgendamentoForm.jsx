@@ -2,6 +2,7 @@ import { useState } from "react";
 import Botao from "./Botao";
 import InputField from "./InputField";
 import SelectField from "./SelectField";
+import TextAreaField from "./TextAreaField";
 import { instanteDeLocal, localDeInstante } from "../utils/agenda";
 
 // Formulário de atendimento agendado. `inicial` traz os valores (ISO) quando é
@@ -74,18 +75,15 @@ export default function AgendamentoForm({ inicial, dia, atendentes = [], podeEsc
         onChange={(e) => setTicketId(e.target.value)}
       />
 
-      <label className="flex flex-col gap-1 text-sm text-gray-700">
-        <span className="font-medium">Descrição (opcional)</span>
-        <textarea
-          rows={2}
-          maxLength={500}
-          className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-          value={descricao}
-          onChange={(e) => setDescricao(e.target.value)}
-        />
-      </label>
+      <TextAreaField
+        label="Descrição (opcional)"
+        rows={2}
+        maxLength={500}
+        value={descricao}
+        onChange={(e) => setDescricao(e.target.value)}
+      />
 
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <Botao type="submit" disabled={salvando}>{inicial ? "Salvar alterações" : "Agendar"}</Botao>
         <Botao type="button" variante="secundario" onClick={onCancelar}>Cancelar</Botao>
       </div>

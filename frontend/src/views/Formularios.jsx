@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import Botao from "../components/Botao";
+import CabecalhoPagina from "../components/CabecalhoPagina";
 import InputField from "../components/InputField";
+import TextAreaField from "../components/TextAreaField";
+import { Carregando, ErroCarregar } from "../components/Estados";
 import SelectField from "../components/SelectField";
 import Toggle from "../components/Toggle";
 import SituacaoBadge from "../components/SituacaoBadge";
@@ -18,12 +21,11 @@ import {
   validarFormulario,
 } from "../utils/formularioCampos";
 
-const botaoTexto = "text-sm hover:underline disabled:cursor-not-allowed disabled:opacity-40 disabled:no-underline";
-
 export default function Formularios() {
   const { notificar } = useNotification();
   const [formularios, setFormularios] = useState([]);
   const [carregando, setCarregando] = useState(true);
+  const [falhou, setFalhou] = useState(false);
   const [form, setForm] = useState(null);
   const [salvando, setSalvando] = useState(false);
 
@@ -31,7 +33,9 @@ export default function Formularios() {
     setCarregando(true);
     try {
       setFormularios(await formularioService.listar());
+      setFalhou(false);
     } catch {
+      setFalhou(true);
       notificar("Erro ao carregar formulários", "erro");
     } finally {
       setCarregando(false);
@@ -111,14 +115,12 @@ export default function Formularios() {
 
   return (
     <div>
-      <div className="mb-1 flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-gray-900">Formulários</h1>
-        {!form && <Botao onClick={() => setForm(formularioVazio())}>Novo</Botao>}
-      </div>
-      <p className="mb-4 text-sm text-gray-500">
-        Monte os campos extras que o solicitante preenche ao abrir um chamado. O formulário é vinculado no cadastro
-        do assunto.
-      </p>
+      <CabecalhoPagina
+        titulo="Formulários"
+        descricao="Monte os campos extras que o solicitante preenche ao abrir um chamado. O formulário é vinculado no cadastro do assunto."
+      >
+        {!form && <Botao type="button" onClick={() => setForm(formularioVazio())}>Novo</Botao>}
+      </CabecalhoPagina>
 
       {form && (
         <form onSubmit={salvar} className="mb-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
@@ -165,15 +167,13 @@ export default function Formularios() {
                   </div>
 
                   {campo.tipo === "SELECAO" && (
-                    <label className="mt-3 flex flex-col gap-1 text-sm text-gray-700">
-                      <span className="font-medium">Opções (uma por linha)</span>
-                      <textarea
-                        rows={3}
-                        className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                    <div className="mt-3">
+                      <TextAreaField
+                        label="Opções (uma por linha)"
                         value={campo.opcoesTexto}
                         onChange={(evento) => alterarCampo(campo.chave, { opcoesTexto: evento.target.value })}
                       />
-                    </label>
+                    </div>
                   )}
 
                   <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
@@ -187,40 +187,45 @@ export default function Formularios() {
                       Obrigatório
                     </label>
                     <div className="flex gap-3">
-                      <button
+                      <Botao
                         type="button"
-                        className={`${botaoTexto} text-gray-600`}
+                        variante="link"
+                        className="text-gray-700"
+                        aria-label={`Subir o campo ${indice + 1}`}
                         disabled={indice === 0}
                         onClick={() => mover(indice, -1)}
                       >
-                        ↑ Subir
-                      </button>
-                      <button
+                        <span aria-hidden="true">↑</span> Subir
+                      </Botao>
+                      <Botao
                         type="button"
-                        className={`${botaoTexto} text-gray-600`}
+                        variante="link"
+                        className="text-gray-700"
+                        aria-label={`Descer o campo ${indice + 1}`}
                         disabled={indice === form.campos.length - 1}
                         onClick={() => mover(indice, 1)}
                       >
-                        ↓ Descer
-                      </button>
-                      <button
+                        <span aria-hidden="true">↓</span> Descer
+                      </Botao>
+                      <Botao
                         type="button"
-                        className={`${botaoTexto} text-red-600`}
+                        variante="linkPerigo"
+                        aria-label={`Remover o campo ${indice + 1}`}
                         onClick={() => removerCampo(campo.chave)}
                       >
                         Remover
-                      </button>
+                      </Botao>
                     </div>
                   </div>
                 </li>
               ))}
             </ol>
 
-            <button type="button" className="mt-3 text-sm font-medium text-blue-600 hover:underline" onClick={adicionarCampo}>
+            <Botao type="button" variante="link" className="mt-3" onClick={adicionarCampo}>
               + Adicionar campo
-            </button>
+            </Botao>
 
-            <div className="mt-4 flex gap-2">
+            <div className="mt-4 flex flex-wrap gap-2">
               <Botao type="submit" disabled={salvando}>
                 {form.id ? "Salvar alterações" : "Criar"}
               </Botao>
@@ -238,17 +243,19 @@ export default function Formularios() {
       )}
 
       {carregando ? (
-        <p className="text-sm text-gray-500">Carregando…</p>
+        <Carregando />
+      ) : falhou ? (
+        <ErroCarregar texto="Não foi possível carregar os formulários." onTentarDeNovo={carregar} />
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
+        <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white" tabIndex={0} role="region" aria-label="Formulários cadastrados">
           <table className="min-w-full divide-y divide-gray-200 text-sm">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-4 py-2 text-left font-medium text-gray-600">Formulário</th>
-                <th className="px-4 py-2 text-left font-medium text-gray-600">Campos</th>
-                <th className="px-4 py-2 text-left font-medium text-gray-600">Assuntos vinculados</th>
-                <th className="px-4 py-2 text-left font-medium text-gray-600">Situação</th>
-                <th className="px-4 py-2" />
+                <th scope="col" className="whitespace-nowrap px-4 py-2 text-left font-medium text-gray-700">Formulário</th>
+                <th scope="col" className="whitespace-nowrap px-4 py-2 text-left font-medium text-gray-700">Campos</th>
+                <th scope="col" className="whitespace-nowrap px-4 py-2 text-left font-medium text-gray-700">Assuntos vinculados</th>
+                <th scope="col" className="whitespace-nowrap px-4 py-2 text-left font-medium text-gray-700">Situação</th>
+                <th scope="col" className="px-4 py-2"><span className="sr-only">Ações</span></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -266,24 +273,26 @@ export default function Formularios() {
                     <SituacaoBadge ativo={formulario.ativo} />
                   </td>
                   <td className="px-4 py-2 text-right whitespace-nowrap">
-                    <button
+                    <Botao
                       type="button"
-                      className="mr-3 text-blue-600 hover:underline"
+                      variante="link"
+                      className="mr-3"
+                      aria-label={`Editar ${formulario.nome}`}
                       onClick={() => setForm(formularioParaEdicao(formulario))}
                     >
                       Editar
-                    </button>
-                    <button type="button" className="text-red-600 hover:underline" onClick={() => excluir(formulario)}>
+                    </Botao>
+                    <Botao type="button" variante="linkPerigo" aria-label={`Excluir ${formulario.nome}`} onClick={() => excluir(formulario)}>
                       Excluir
-                    </button>
+                    </Botao>
                   </td>
                 </tr>
               ))}
 
               {formularios.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-6 text-center text-gray-400">
-                    Nenhum formulário cadastrado.
+                  <td colSpan={5} className="px-4 py-6 text-center text-gray-600">
+                    Nenhum registro encontrado.
                   </td>
                 </tr>
               )}

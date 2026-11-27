@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 import ticketService from "../services/ticketService";
 import departamentoService from "../services/departamentoService";
 import TicketCard from "../components/TicketCard";
+import CabecalhoPagina from "../components/CabecalhoPagina";
+import LinkBotao from "../components/LinkBotao";
+import { Carregando, ErroCarregar, Vazio } from "../components/Estados";
 import SelectField from "../components/SelectField";
 import { StatusTicket } from "../enum/StatusTicket";
 import { STATUS_LABEL } from "../constants/labels";
@@ -25,6 +27,9 @@ export default function Tickets() {
   // feita pelo backend (?ordem=), que também joga os fechados para o fim.
   const [ordem, setOrdem] = useState("antigos");
   const [carregando, setCarregando] = useState(true);
+  const [falhou, setFalhou] = useState(false);
+  // Incrementado pelo "Tentar de novo" para refazer a busca.
+  const [tentativa, setTentativa] = useState(0);
   const [pagina, setPagina] = useState(1);
 
   useEffect(() => {
@@ -33,9 +38,13 @@ export default function Tickets() {
     Promise.resolve().then(() => setCarregando(true));
     ticketService
       .listar({ ordem, ...(statusFiltro ? { status: statusFiltro } : {}), ...(setorFiltro ? { departamentoId: setorFiltro } : {}) })
-      .then(setTickets)
+      .then((lista) => {
+        setTickets(lista);
+        setFalhou(false);
+      })
+      .catch(() => setFalhou(true))
       .finally(() => setCarregando(false));
-  }, [statusFiltro, setorFiltro, ordem]);
+  }, [statusFiltro, setorFiltro, ordem, tentativa]);
 
   useEffect(() => {
     departamentoService.listar().then(setDepartamentos).catch(() => {});
@@ -60,16 +69,15 @@ export default function Tickets() {
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-gray-900">Chamados</h1>
-        <Link to="/tickets/novo" className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
-          Novo chamado
-        </Link>
-      </div>
+      <CabecalhoPagina titulo="Chamados">
+        <LinkBotao to="/tickets/novo">Novo chamado</LinkBotao>
+      </CabecalhoPagina>
 
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap gap-2">
+      <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div role="group" aria-label="Filtrar por status" className="flex flex-wrap gap-2">
           <button
+            type="button"
+            aria-pressed={statusFiltro === ""}
             onClick={() => mudarFiltro("")}
             className={`rounded-full px-3 py-1 text-xs font-medium ${statusFiltro === "" ? "bg-gray-800 text-white" : "bg-gray-200 text-gray-700"}`}
           >
@@ -77,7 +85,9 @@ export default function Tickets() {
           </button>
           {Object.values(StatusTicket).map((status) => (
             <button
+              type="button"
               key={status}
+              aria-pressed={statusFiltro === status}
               onClick={() => mudarFiltro(status)}
               className={`rounded-full px-3 py-1 text-xs font-medium ${statusFiltro === status ? "bg-gray-800 text-white" : "bg-gray-200 text-gray-700"}`}
             >
@@ -86,7 +96,7 @@ export default function Tickets() {
           ))}
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:items-center">
           <SelectField
             aria-label="Filtrar por setor"
             className="py-1"
@@ -106,17 +116,20 @@ export default function Tickets() {
       </div>
 
       {carregando ? (
-        <p className="text-sm text-gray-500">Carregando…</p>
+        <Carregando />
+      ) : falhou ? (
+        <ErroCarregar texto="Não foi possível carregar os chamados." onTentarDeNovo={() => setTentativa((t) => t + 1)} />
+      ) : tickets.length === 0 ? (
+        <Vazio texto="Nenhum chamado encontrado." />
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {itens.map((ticket) => (
             <TicketCard key={ticket.id} ticket={ticket} />
           ))}
-          {tickets.length === 0 && <p className="text-sm text-gray-400">Nenhum chamado encontrado.</p>}
         </div>
       )}
 
-      {!carregando && <Paginacao {...paginacao} onChange={setPagina} />}
+      {!carregando && !falhou && <Paginacao {...paginacao} onChange={setPagina} />}
     </div>
   );
 }

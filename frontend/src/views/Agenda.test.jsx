@@ -68,8 +68,8 @@ describe("Agenda", () => {
     await within(detalhes).findByText("Visita ao cliente");
 
     // Dois atendimentos no dia, mas só o do próprio técnico tem Editar/Cancelar.
-    expect(within(detalhes).getAllByRole("button", { name: "Editar" })).toHaveLength(1);
-    expect(within(detalhes).getAllByRole("button", { name: "Cancelar" })).toHaveLength(1);
+    expect(within(detalhes).getAllByRole("button", { name: /^Editar / })).toHaveLength(1);
+    expect(within(detalhes).getAllByRole("button", { name: /^Cancelar / })).toHaveLength(1);
   });
 
   it("gestor (agenda.todos) altera atendimentos de todos", async () => {
@@ -78,7 +78,7 @@ describe("Agenda", () => {
     const detalhes = await screen.findByRole("complementary", { name: "Detalhes do dia" });
     await within(detalhes).findByText("Treinamento");
 
-    expect(within(detalhes).getAllByRole("button", { name: "Editar" })).toHaveLength(2);
+    expect(within(detalhes).getAllByRole("button", { name: /^Editar / })).toHaveLength(2);
   });
 
   it("agenda um atendimento novo e recarrega", async () => {

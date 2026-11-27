@@ -14,7 +14,7 @@ const ETIQUETA = "rounded bg-gray-100 px-1.5 py-0.5 text-gray-600";
 export function TituloChamado({ ticket }) {
   return (
     <>
-      <span className="font-normal text-gray-400">#{ticket.id}</span> {ticket.titulo}
+      <span className="font-normal text-gray-500">#{ticket.id}</span> {ticket.titulo}
     </>
   );
 }
@@ -76,7 +76,7 @@ export function PessoasChamado({ ticket }) {
 export function RodapeChamado({ ticket }) {
   const tempo = tempoAberto(ticket);
   return (
-    <div className="flex flex-wrap items-center justify-between gap-x-3 text-xs text-gray-400">
+    <div className="flex flex-wrap items-center justify-between gap-x-3 text-xs text-gray-500">
       {tempo && <span className="font-medium text-gray-500">{tempo}</span>}
       {ticket.createdAt && <span>Aberto em {formatDate(ticket.createdAt)}</span>}
     </div>

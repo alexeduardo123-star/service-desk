@@ -31,7 +31,7 @@ export const APROVACAO_COR = {
 
 export const PAPEL_LABEL = {
   [PapelUsuario.ADMIN]: "Administrador",
-  [PapelUsuario.TECNICO]: "Técnico",
+  [PapelUsuario.TECNICO]: "Atendente",
   [PapelUsuario.GESTOR]: "Gestor",
   [PapelUsuario.SOLICITANTE]: "Solicitante",
 };

@@ -1,13 +1,19 @@
 // Campos do formulário do assunto, para preencher ao abrir o chamado.
 // campos: [{ id, rotulo, tipo, obrigatorio, opcoes }]; valores: { [id]: valor }.
-const classeEntrada =
-  "rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none";
+import { CLASSE_CAMPO } from "../hooks/useCampo";
+
+const classeEntrada = `${CLASSE_CAMPO} border-gray-300`;
 
 function Rotulo({ campo }) {
   return (
     <span className="font-medium">
       {campo.rotulo}
-      {campo.obrigatorio && <span className="text-red-600"> *</span>}
+      {campo.obrigatorio && (
+        <>
+          <span aria-hidden="true" className="text-red-700"> *</span>
+          <span className="sr-only"> (obrigatório)</span>
+        </>
+      )}
     </span>
   );
 }
@@ -41,11 +47,11 @@ export default function FormularioPreenchimento({ campos = [], valores, onChange
         let entrada;
         if (campo.tipo === "TEXTO_LONGO") {
           entrada = (
-            <textarea id={id} rows={3} maxLength={2000} className={classeEntrada} value={valor ?? ""} onChange={(e) => onChange(campo.id, e.target.value)} />
+            <textarea id={id} rows={3} maxLength={2000} aria-required={campo.obrigatorio || undefined} className={classeEntrada} value={valor ?? ""} onChange={(e) => onChange(campo.id, e.target.value)} />
           );
         } else if (campo.tipo === "SELECAO") {
           entrada = (
-            <select id={id} className={classeEntrada} value={valor ?? ""} onChange={(e) => onChange(campo.id, e.target.value)}>
+            <select id={id} aria-required={campo.obrigatorio || undefined} className={classeEntrada} value={valor ?? ""} onChange={(e) => onChange(campo.id, e.target.value)}>
               <option value="">Selecione…</option>
               {(campo.opcoes ?? []).map((opcao) => (
                 <option key={opcao} value={opcao}>{opcao}</option>
@@ -55,7 +61,7 @@ export default function FormularioPreenchimento({ campos = [], valores, onChange
         } else {
           const tipos = { NUMERO: "number", DATA: "date" };
           entrada = (
-            <input id={id} type={tipos[campo.tipo] ?? "text"} maxLength={campo.tipo === "TEXTO" ? 500 : undefined} step={campo.tipo === "NUMERO" ? "any" : undefined} className={classeEntrada} value={valor ?? ""} onChange={(e) => onChange(campo.id, e.target.value)} />
+            <input id={id} type={tipos[campo.tipo] ?? "text"} maxLength={campo.tipo === "TEXTO" ? 500 : undefined} step={campo.tipo === "NUMERO" ? "any" : undefined} aria-required={campo.obrigatorio || undefined} className={classeEntrada} value={valor ?? ""} onChange={(e) => onChange(campo.id, e.target.value)} />
           );
         }
 

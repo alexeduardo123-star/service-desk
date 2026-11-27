@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import AgendamentoForm from "../components/AgendamentoForm";
 import Botao from "../components/Botao";
+import CabecalhoPagina from "../components/CabecalhoPagina";
 import SelectField from "../components/SelectField";
 import { useAuth } from "../auth/useAuth";
 import { useNotification } from "../store/useNotification";
@@ -131,10 +132,8 @@ export default function Agenda() {
 
   return (
     <div>
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-semibold text-gray-900">Agenda</h1>
-
-        <div className="flex flex-wrap items-end gap-2">
+      <CabecalhoPagina titulo="Agenda">
+        <div className="flex w-full flex-wrap items-end gap-2 sm:w-auto">
           {atendentes.length > 0 && (
             <SelectField
               label="Atendente"
@@ -144,11 +143,11 @@ export default function Agenda() {
               options={atendentes.map((a) => ({ value: a.id, label: a.nome }))}
             />
           )}
-          <Botao variante="secundario" onClick={() => mudarMes(-1)} aria-label="Mês anterior">‹</Botao>
-          <Botao variante="secundario" onClick={irParaHoje}>Hoje</Botao>
-          <Botao variante="secundario" onClick={() => mudarMes(1)} aria-label="Próximo mês">›</Botao>
+          <Botao type="button" variante="secundario" onClick={() => mudarMes(-1)} aria-label="Mês anterior">‹</Botao>
+          <Botao type="button" variante="secundario" onClick={irParaHoje}>Hoje</Botao>
+          <Botao type="button" variante="secundario" onClick={() => mudarMes(1)} aria-label="Próximo mês">›</Botao>
         </div>
-      </div>
+      </CabecalhoPagina>
 
       <p className="mb-3 text-lg font-medium capitalize text-gray-800" aria-live="polite">
         {NOMES_MESES[mes.mes - 1]} de {mes.ano}
@@ -160,11 +159,11 @@ export default function Agenda() {
         </p>
       )}
 
-      <div className="mb-3 flex flex-wrap gap-4 text-xs text-gray-600" aria-label="Legenda">
-        <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded bg-blue-300" /> Atendimento agendado</span>
-        <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded bg-amber-300" /> Prazo de SLA</span>
-        <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded bg-red-300" /> SLA vencido</span>
-        {carregando && <span>Carregando…</span>}
+      <div className="mb-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-600" role="group" aria-label="Legenda">
+        <span className="flex items-center gap-1"><span aria-hidden="true" className="h-2.5 w-2.5 rounded bg-blue-300" /> Atendimento agendado</span>
+        <span className="flex items-center gap-1"><span aria-hidden="true" className="h-2.5 w-2.5 rounded bg-amber-300" /> Prazo de SLA</span>
+        <span className="flex items-center gap-1"><span aria-hidden="true" className="h-2.5 w-2.5 rounded bg-red-300" /> SLA vencido</span>
+        {carregando && <span role="status">Carregando…</span>}
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
@@ -192,19 +191,33 @@ export default function Agenda() {
                     setDiaSelecionado(dia.chave);
                     setFormulario(null);
                   }}
-                  className={`flex min-h-24 flex-col gap-1 border-b border-r border-gray-100 p-1.5 text-left align-top hover:bg-blue-50 ${
-                    dia.doMes ? "bg-white" : "bg-gray-50 text-gray-400"
+                  className={`flex min-h-14 flex-col gap-1 border-b border-r border-gray-100 p-1 text-left align-top hover:bg-blue-50 sm:min-h-24 sm:p-1.5 ${
+                    dia.doMes ? "bg-white" : "bg-gray-50 text-gray-500"
                   } ${selecionado ? "ring-2 ring-inset ring-blue-500" : ""}`}
                 >
                   <span className={`text-xs font-medium ${dia.chave === hoje ? "inline-flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-white" : ""}`}>
                     {dia.dia}
                   </span>
-                  {itens.slice(0, MAX_NA_CELULA).map((item) => (
-                    <Chip key={`${item.tipo}-${item.id ?? item.ticketId}`} item={item} />
-                  ))}
-                  {itens.length > MAX_NA_CELULA && (
-                    <span className="text-xs text-gray-500">+{itens.length - MAX_NA_CELULA} mais</span>
+                  {/* No celular a célula é estreita demais para o texto: mostra só um
+                      marcador; os detalhes aparecem ao tocar no dia (o aria-label já conta os itens). */}
+                  {itens.length > 0 && (
+                    <span aria-hidden="true" className="mt-auto flex gap-0.5 sm:hidden">
+                      {itens.slice(0, 3).map((item) => (
+                        <span
+                          key={`${item.tipo}-${item.id ?? item.ticketId}`}
+                          className={`h-1.5 w-1.5 rounded-full ${item.tipo === "prazo" ? (item.vencido ? "bg-red-500" : "bg-amber-500") : "bg-blue-500"}`}
+                        />
+                      ))}
+                    </span>
                   )}
+                  <span className="hidden sm:contents">
+                    {itens.slice(0, MAX_NA_CELULA).map((item) => (
+                      <Chip key={`${item.tipo}-${item.id ?? item.ticketId}`} item={item} />
+                    ))}
+                    {itens.length > MAX_NA_CELULA && (
+                      <span className="text-xs text-gray-500">+{itens.length - MAX_NA_CELULA} mais</span>
+                    )}
+                  </span>
                 </button>
               );
             })}
@@ -255,12 +268,12 @@ export default function Agenda() {
                     {a.descricao && <p className="mt-1 text-xs text-gray-700">{a.descricao}</p>}
                     {podeAlterarAgendamento(usuario, a, { gerenciar: podeGerenciar, todos: gerenciaTodos }) && (
                       <div className="mt-1 flex gap-3 text-xs">
-                        <button type="button" className="text-blue-600 hover:underline" onClick={() => setFormulario({ agendamento: a })}>
+                        <Botao type="button" variante="link" className="text-xs" aria-label={`Editar ${a.titulo}`} onClick={() => setFormulario({ agendamento: a })}>
                           Editar
-                        </button>
-                        <button type="button" className="text-red-600 hover:underline" onClick={() => cancelar(a)}>
+                        </Botao>
+                        <Botao type="button" variante="linkPerigo" className="text-xs" aria-label={`Cancelar ${a.titulo}`} onClick={() => cancelar(a)}>
                           Cancelar
-                        </button>
+                        </Botao>
                       </div>
                     )}
                   </li>

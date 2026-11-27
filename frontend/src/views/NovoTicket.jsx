@@ -8,6 +8,9 @@ import departamentoService from "../services/departamentoService";
 import usuarioService from "../services/usuarioService";
 import assuntoService from "../services/assuntoService";
 import InputField from "../components/InputField";
+import SelectField from "../components/SelectField";
+import TextAreaField from "../components/TextAreaField";
+import CabecalhoPagina from "../components/CabecalhoPagina";
 import Botao from "../components/Botao";
 import { useNotification } from "../store/useNotification";
 import { setorInicial } from "../utils/setor";
@@ -115,38 +118,23 @@ export default function NovoTicket() {
 
   return (
     <div className="mx-auto max-w-xl">
-      <h1 className="mb-6 text-xl font-semibold text-gray-900">Novo chamado</h1>
+      <CabecalhoPagina titulo="Novo chamado" />
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4 rounded-lg border border-gray-200 bg-white p-6">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4 rounded-lg border border-gray-200 bg-white p-4 sm:p-6">
         <InputField label="Título" value={titulo} onChange={(e) => setTitulo(e.target.value)} required />
 
-        <label className="flex flex-col gap-1 text-sm text-gray-700">
-          <span className="font-medium">Descrição</span>
-          <textarea
-            className="rounded-md border border-gray-300 px-3 py-2 text-sm"
-            rows={4}
-            value={descricao}
-            onChange={(e) => setDescricao(e.target.value)}
-            required
-          />
-        </label>
+        <TextAreaField label="Descrição" rows={4} value={descricao} onChange={(e) => setDescricao(e.target.value)} required />
 
         <SugestoesArtigos textoDigitado={`${titulo} ${descricao}`} textoExtra={textoDoAssunto} categoriaId={categoriaId} />
 
         {assuntos.length > 0 && (
-          <label className="flex flex-col gap-1 text-sm text-gray-700">
-            <span className="font-medium">Assunto</span>
-            <select
-              className="rounded-md border border-gray-300 px-3 py-2 text-sm"
-              value={assuntoId}
-              onChange={(e) => escolherAssunto(e.target.value)}
-            >
-              <option value="">Selecione…</option>
-              {opcoesAssunto(assuntos).map((o) => (
-                <option key={o.value} value={o.value}>{o.label}</option>
-              ))}
-            </select>
-          </label>
+          <SelectField
+            label="Assunto"
+            placeholder="Selecione…"
+            value={assuntoId}
+            onChange={(e) => escolherAssunto(e.target.value)}
+            options={opcoesAssunto(assuntos)}
+          />
         )}
 
         <FormularioPreenchimento
@@ -155,61 +143,49 @@ export default function NovoTicket() {
           onChange={(campoId, valor) => setRespostas((atual) => ({ ...atual, [campoId]: valor }))}
         />
 
-        <label className="flex flex-col gap-1 text-sm text-gray-700">
-          <span className="font-medium">Categoria</span>
-          <select className="rounded-md border border-gray-300 px-3 py-2 text-sm" value={categoriaId} onChange={(e) => setCategoriaId(e.target.value)} required>
-            <option value="">Selecione…</option>
-            {categorias.map((c) => (
-              <option key={c.id} value={c.id}>{c.nome}</option>
-            ))}
-          </select>
-        </label>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <SelectField
+            label="Categoria"
+            placeholder="Selecione…"
+            value={categoriaId}
+            onChange={(e) => setCategoriaId(e.target.value)}
+            options={categorias.map((c) => ({ value: c.id, label: c.nome }))}
+            required
+          />
 
-        <div className="flex flex-col gap-1 text-sm text-gray-700">
-          <label className="flex flex-col gap-1">
-            <span className="font-medium">Prioridade</span>
-            <select
-              className="rounded-md border border-gray-300 px-3 py-2 text-sm disabled:bg-gray-100"
-              value={prioridadeId}
-              onChange={(e) => setPrioridadeId(e.target.value)}
-              disabled={prioridadeDefinidaPeloAssunto}
-              aria-describedby={prioridadeDefinidaPeloAssunto ? "ajuda-prioridade" : undefined}
-              required
-            >
-              <option value="">Selecione…</option>
-              {prioridades.map((p) => (
-                <option key={p.id} value={p.id}>{p.nome}</option>
-              ))}
-            </select>
-          </label>
-          {/* Fora do <label> para não virar parte do nome acessível do campo. */}
-          {prioridadeDefinidaPeloAssunto && (
-            <span id="ajuda-prioridade" className="text-xs text-gray-500">Definida pelo assunto escolhido.</span>
-          )}
+          <SelectField
+            label="Prioridade"
+            placeholder="Selecione…"
+            value={prioridadeId}
+            onChange={(e) => setPrioridadeId(e.target.value)}
+            disabled={prioridadeDefinidaPeloAssunto}
+            ajuda={prioridadeDefinidaPeloAssunto ? "Definida pelo assunto escolhido." : undefined}
+            options={prioridades.map((p) => ({ value: p.id, label: p.nome }))}
+            required
+          />
+
+          <SelectField
+            label="Setor"
+            placeholder="Selecione…"
+            value={departamentoId}
+            onChange={(e) => setDepartamentoId(e.target.value)}
+            ajuda={usuarioSemSetor ? "Seu usuário não tem setor cadastrado: escolha o setor do chamado." : undefined}
+            options={departamentos.map((d) => ({ value: d.id, label: d.nome }))}
+            required
+          />
+
+          <SelectField
+            label="Equipamento (opcional)"
+            placeholder="Nenhum"
+            value={equipamentoId}
+            onChange={(e) => setEquipamentoId(e.target.value)}
+            options={equipamentos.map((eq) => ({ value: eq.id, label: `${eq.nome} (${eq.numeroSerie})` }))}
+          />
         </div>
 
-        <label className="flex flex-col gap-1 text-sm text-gray-700">
-          <span className="font-medium">Setor</span>
-          <select className="rounded-md border border-gray-300 px-3 py-2 text-sm" value={departamentoId} onChange={(e) => setDepartamentoId(e.target.value)} required>
-            <option value="">Selecione…</option>
-            {departamentos.map((d) => (
-              <option key={d.id} value={d.id}>{d.nome}</option>
-            ))}
-          </select>
-          {usuarioSemSetor && <span className="text-xs text-gray-500">Seu usuário não tem setor cadastrado: escolha o setor do chamado.</span>}
-        </label>
-
-        <label className="flex flex-col gap-1 text-sm text-gray-700">
-          <span className="font-medium">Equipamento (opcional)</span>
-          <select className="rounded-md border border-gray-300 px-3 py-2 text-sm" value={equipamentoId} onChange={(e) => setEquipamentoId(e.target.value)}>
-            <option value="">Nenhum</option>
-            {equipamentos.map((eq) => (
-              <option key={eq.id} value={eq.id}>{eq.nome} ({eq.numeroSerie})</option>
-            ))}
-          </select>
-        </label>
-
-        <Botao type="submit" disabled={enviando}>{enviando ? "Enviando…" : "Abrir chamado"}</Botao>
+        <Botao type="submit" disabled={enviando} className="sm:self-start">
+          {enviando ? "Enviando…" : "Abrir chamado"}
+        </Botao>
       </form>
     </div>
   );

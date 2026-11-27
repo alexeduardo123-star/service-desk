@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { createPortal } from "react-dom";
 import baseConhecimentoService from "../services/baseConhecimentoService";
 import { useDebounce } from "../hooks/useDebounce";
 import ArtigoModal from "./ArtigoModal";
@@ -52,8 +51,8 @@ export default function SugestoesArtigos({ textoDigitado = "", textoExtra = "", 
           </li>
         ))}
       </ul>
-      {/* O modal vai para o <body> para não ficar dentro do <form> do chamado. */}
-      {aberto && createPortal(<ArtigoModal artigo={aberto} onFechar={() => setAberto(null)} />, document.body)}
+      {/* O Modal vai para o <body> por portal: não fica dentro do <form> do chamado. */}
+      {aberto && <ArtigoModal artigo={aberto} onFechar={() => setAberto(null)} />}
     </section>
   );
 }
