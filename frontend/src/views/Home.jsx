@@ -78,7 +78,7 @@ export default function Home() {
           cor="#ef4444"
           destaque={totais?.slaVencidos > 0}
         />
-        <StatCard titulo="Sem técnico" valor={valor(totais?.semTecnico)} detalhe="aguardando atribuição" cor="#8b5cf6" />
+        <StatCard titulo="Sem atendente" valor={valor(totais?.semTecnico)} detalhe="aguardando atribuição" cor="#8b5cf6" />
       </div>
 
       <div className="mb-4 grid gap-4 sm:grid-cols-2">
@@ -127,7 +127,7 @@ export default function Home() {
           </ChartCard>
 
           {resumo.topTecnicos && (
-            <ChartCard titulo="Chamados por técnico" subtitulo="Top 5 por volume">
+            <ChartCard titulo="Chamados por atendente" subtitulo="Top 5 por volume">
               <BarChart
                 itens={resumo.topTecnicos.map((t) => ({ rotulo: t.nome, valor: t.total }))}
                 vazio="Nenhum chamado atribuído ainda."

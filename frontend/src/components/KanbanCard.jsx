@@ -1,13 +1,11 @@
 import { Link } from "react-router-dom";
-import AprovacaoBadge from "./AprovacaoBadge";
-import { COR_POR_NIVEL } from "../constants/cores";
 import { STATUS_LABEL } from "../constants/labels";
-import { COLUNAS_KANBAN, slaVencido } from "../utils/kanban";
-import { tempoAberto } from "../utils/tempoAberto";
+import { COLUNAS_KANBAN } from "../utils/kanban";
+import { corDaPrioridade } from "../utils/camposChamado";
+import { EtiquetasChamado, PessoasChamado, PrioridadeBadge, RodapeChamado, TituloChamado } from "./CamposChamado";
 
+// O status não aparece no card: é a própria coluna do quadro.
 export default function KanbanCard({ ticket, podeMover, arrastando, onDragStart, onDragEnd, onMover }) {
-  const atrasado = slaVencido(ticket);
-
   return (
     <article
       draggable={podeMover}
@@ -17,34 +15,26 @@ export default function KanbanCard({ ticket, podeMover, arrastando, onDragStart,
         onDragStart(ticket.id);
       }}
       onDragEnd={onDragEnd}
-      className={`rounded-lg border border-gray-200 bg-white p-3 shadow-sm ${podeMover ? "cursor-grab active:cursor-grabbing" : ""} ${arrastando ? "opacity-40" : ""}`}
-      style={{ borderLeft: `4px solid ${COR_POR_NIVEL[ticket.prioridade?.nivel] ?? "#9ca3af"}` }}
+      className={`flex flex-col gap-2 rounded-lg border border-gray-200 bg-white p-3 shadow-sm ${podeMover ? "cursor-grab active:cursor-grabbing" : ""} ${arrastando ? "opacity-40" : ""}`}
+      style={{ borderLeft: `4px solid ${corDaPrioridade(ticket.prioridade)}` }}
     >
       <div className="flex items-start justify-between gap-2">
         <Link to={`/tickets/${ticket.id}`} className="text-sm font-semibold text-gray-900 hover:text-blue-600">
-          <span className="text-gray-400">#{ticket.id}</span> {ticket.titulo}
+          <TituloChamado ticket={ticket} />
         </Link>
+        <PrioridadeBadge prioridade={ticket.prioridade} />
       </div>
 
-      <div className="mt-2 flex flex-wrap gap-1.5 text-xs">
-        <span className="rounded bg-gray-100 px-1.5 py-0.5 text-gray-600">{ticket.categoria?.nome}</span>
-        <span className="rounded bg-gray-100 px-1.5 py-0.5 text-gray-600">{ticket.prioridade?.nome}</span>
-        {atrasado && <span className="rounded bg-red-100 px-1.5 py-0.5 font-semibold text-red-700">SLA vencido</span>}
-        <AprovacaoBadge ticket={ticket} />
-      </div>
-
-      <div className="mt-2 text-xs text-gray-500">
-        <p>Solicitante: {ticket.solicitante?.nome}</p>
-        <p>{ticket.tecnico ? `Técnico: ${ticket.tecnico.nome}` : "Sem técnico"}</p>
-        <p className="text-gray-400">{tempoAberto(ticket)}</p>
-      </div>
+      <EtiquetasChamado ticket={ticket} />
+      <PessoasChamado ticket={ticket} />
+      <RodapeChamado ticket={ticket} />
 
       {podeMover && (
         <select
           aria-label={`Mover chamado ${ticket.id} para`}
           value={ticket.status}
           onChange={(e) => onMover(ticket, e.target.value)}
-          className="mt-2 w-full rounded border border-gray-200 bg-white px-1.5 py-1 text-xs text-gray-600"
+          className="w-full rounded border border-gray-200 bg-white px-1.5 py-1 text-xs text-gray-600"
         >
           {COLUNAS_KANBAN.map((status) => (
             <option key={status} value={status}>

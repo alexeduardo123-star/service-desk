@@ -1,32 +1,26 @@
 import { Link } from "react-router-dom";
 import StatusBadge from "./StatusBadge";
-import AprovacaoBadge from "./AprovacaoBadge";
-import { formatDate } from "../utils/formatDate";
-import { tempoAberto } from "../utils/tempoAberto";
+import { EtiquetasChamado, PessoasChamado, PrioridadeBadge, RodapeChamado, TituloChamado } from "./CamposChamado";
 
 export default function TicketCard({ ticket }) {
   return (
     <Link
       to={`/tickets/${ticket.id}`}
-      className="block rounded-lg border border-gray-200 bg-white p-4 shadow-sm hover:shadow-md transition-shadow"
+      className="flex flex-col gap-2 rounded-lg border border-gray-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md"
     >
       <div className="flex items-start justify-between gap-2">
-        <h3 className="font-semibold text-gray-900">{ticket.titulo}</h3>
-        <StatusBadge status={ticket.status} />
+        <h3 className="font-semibold text-gray-900">
+          <TituloChamado ticket={ticket} />
+        </h3>
+        <div className="flex shrink-0 flex-col items-end gap-1">
+          <StatusBadge status={ticket.status} />
+          <PrioridadeBadge prioridade={ticket.prioridade} />
+        </div>
       </div>
-      <div className="mt-1 empty:hidden">
-        <AprovacaoBadge ticket={ticket} />
-      </div>
-      <p className="mt-1 line-clamp-2 text-sm text-gray-600">{ticket.descricao}</p>
-      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
-        <span>Categoria: {ticket.categoria?.nome}</span>
-        <span>Prioridade: {ticket.prioridade?.nome}</span>
-        {ticket.departamento && <span>Setor: {ticket.departamento.nome}</span>}
-        <span>Solicitante: {ticket.solicitante?.nome}</span>
-        {ticket.tecnico && <span>Técnico: {ticket.tecnico.nome}</span>}
-        <span>{formatDate(ticket.createdAt)}</span>
-        <span className="font-medium text-gray-600">{tempoAberto(ticket)}</span>
-      </div>
+      {ticket.descricao && <p className="line-clamp-2 text-sm text-gray-600">{ticket.descricao}</p>}
+      <EtiquetasChamado ticket={ticket} />
+      <PessoasChamado ticket={ticket} />
+      <RodapeChamado ticket={ticket} />
     </Link>
   );
 }

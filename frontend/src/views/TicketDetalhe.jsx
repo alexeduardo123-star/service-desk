@@ -211,7 +211,7 @@ export default function TicketDetalhe() {
           <span>Prioridade: {ticket.prioridade?.nome}</span>
           <span>Setor: {ticket.departamento?.nome || "Não informado"}</span>
           <span>Solicitante: {ticket.solicitante?.nome}</span>
-          <span>Técnico: {ticket.tecnico?.nome || "Não atribuído"}</span>
+          <span>Atendente: {ticket.tecnico?.nome || "Sem atendente"}</span>
           <span>Aberto em: {formatDate(ticket.createdAt)}</span>
           {ticket.closedAt && <span>Fechado em: {formatDate(ticket.closedAt)}</span>}
         </div>

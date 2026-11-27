@@ -44,7 +44,7 @@ const COLUNAS_CSV = [
   { rotulo: "Prioridade", valor: (l) => l.prioridade },
   { rotulo: "Setor", valor: (l) => l.setor },
   { rotulo: "Solicitante", valor: (l) => l.solicitante },
-  { rotulo: "Técnico", valor: (l) => l.tecnico },
+  { rotulo: "Atendente", valor: (l) => l.tecnico },
   { rotulo: "Aberto em", valor: (l) => formatDate(l.criadoEm) },
   { rotulo: "Fechado em", valor: (l) => (l.fechadoEm ? formatDate(l.fechadoEm) : "") },
   { rotulo: "Horas até resolver", valor: (l) => (l.horasResolucao == null ? "" : String(l.horasResolucao).replace(".", ",")) },
@@ -198,7 +198,7 @@ export default function Relatorios() {
 
   const opcoesTecnico = [
     { value: "me", label: "Meus chamados" },
-    { value: "none", label: "Sem técnico" },
+    { value: "none", label: "Sem atendente" },
     ...tecnicos.map((t) => ({ value: t.id, label: t.nome })),
   ];
 
@@ -267,7 +267,7 @@ export default function Relatorios() {
             options={opcoesSetor(departamentos)}
           />
           <SelectField
-            label="Técnico"
+            label="Atendente"
             placeholder="Todos"
             value={filtros.tecnicoId}
             onChange={(e) => alterarFiltro("tecnicoId", e.target.value)}
@@ -447,8 +447,8 @@ export default function Relatorios() {
             <ChartCard titulo="Por categoria">
               <BarChart itens={resumo.porCategoria.map((c) => ({ rotulo: c.nome, valor: c.total }))} vazio="Nenhum chamado no período." />
             </ChartCard>
-            <ChartCard titulo="Por técnico" subtitulo="os 5 com mais chamados">
-              <BarChart itens={(resumo.topTecnicos ?? []).map((t) => ({ rotulo: t.nome, valor: t.total }))} vazio="Nenhum técnico atribuído." />
+            <ChartCard titulo="Por atendente" subtitulo="os 5 com mais chamados">
+              <BarChart itens={(resumo.topTecnicos ?? []).map((t) => ({ rotulo: t.nome, valor: t.total }))} vazio="Nenhum atendente atribuído." />
             </ChartCard>
           </div>
 
@@ -468,7 +468,7 @@ export default function Relatorios() {
                       <th className="py-2 pr-3">Prioridade</th>
                       <th className="py-2 pr-3">Setor</th>
                       <th className="py-2 pr-3">Solicitante</th>
-                      <th className="py-2 pr-3">Técnico</th>
+                      <th className="py-2 pr-3">Atendente</th>
                       <th className="py-2 pr-3">Aberto em</th>
                       <th className="py-2 pr-3">Resolução</th>
                       <th className="py-2">SLA</th>
