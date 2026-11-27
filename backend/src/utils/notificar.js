@@ -8,6 +8,9 @@ import { NOME_APP } from "../config/marca.js";
 export const PREFERENCIA_POR_TIPO = {
   TICKET_CRIADO: "notificarNovoTicket",
   TICKET_ATRIBUIDO: "notificarAtribuicao",
+  // Encaminhar e entrar como colaborador também são "o chamado passou por você".
+  TICKET_ENCAMINHADO: "notificarAtribuicao",
+  TICKET_COLABORADOR: "notificarAtribuicao",
   TICKET_STATUS: "notificarStatus",
   TICKET_COMENTARIO: "notificarComentario",
 };
@@ -95,4 +98,14 @@ export async function buscarGestoresDoSetor(departamentoId, deps = { prisma }) {
 export function buscarUsuario(id, deps = { prisma }) {
   if (!id) return Promise.resolve(null);
   return deps.prisma.usuario.findUnique({ where: { id }, select: SELECT_DESTINATARIO });
+}
+
+// Colaboradores do chamado, já como destinatários.
+export async function buscarColaboradores(ticketId, deps = { prisma }) {
+  if (!ticketId) return [];
+  const registros = await deps.prisma.ticketColaborador.findMany({
+    where: { ticketId },
+    select: { usuario: { select: SELECT_DESTINATARIO } },
+  });
+  return registros.map((r) => r.usuario);
 }

@@ -1,5 +1,12 @@
 import { describe, it, expect, vi } from "vitest";
-import { buscarGestoresDoSetor, deveNotificar, filtrarDestinatarios, notificarUsuarios } from "./notificar.js";
+import {
+  PREFERENCIA_POR_TIPO,
+  buscarColaboradores,
+  buscarGestoresDoSetor,
+  deveNotificar,
+  filtrarDestinatarios,
+  notificarUsuarios,
+} from "./notificar.js";
 
 function depsFalsas({ configs = [] } = {}) {
   return {
@@ -23,6 +30,31 @@ describe("deveNotificar", () => {
 
   it("sempre entrega tipos sem preferência (SISTEMA)", () => {
     expect(deveNotificar({ notificarStatus: false, notificarComentario: false }, "SISTEMA")).toBe(true);
+  });
+
+  it("encaminhamento e colaborador seguem a preferência de atribuições", () => {
+    expect(PREFERENCIA_POR_TIPO.TICKET_ENCAMINHADO).toBe("notificarAtribuicao");
+    expect(PREFERENCIA_POR_TIPO.TICKET_COLABORADOR).toBe("notificarAtribuicao");
+    for (const tipo of ["TICKET_ENCAMINHADO", "TICKET_COLABORADOR"]) {
+      expect(deveNotificar({ notificarAtribuicao: false }, tipo)).toBe(false);
+      expect(deveNotificar({ notificarAtribuicao: true, notificarStatus: false }, tipo)).toBe(true);
+    }
+  });
+});
+
+describe("buscarColaboradores", () => {
+  it("devolve os usuários colaboradores do chamado", async () => {
+    const findMany = vi.fn().mockResolvedValue([{ usuario: { id: 30, nome: "Carla" } }]);
+    const deps = { prisma: { ticketColaborador: { findMany } } };
+
+    expect(await buscarColaboradores(7, deps)).toEqual([{ id: 30, nome: "Carla" }]);
+    expect(findMany.mock.calls[0][0].where).toEqual({ ticketId: 7 });
+  });
+
+  it("sem chamado não consulta o banco", async () => {
+    const findMany = vi.fn();
+    expect(await buscarColaboradores(null, { prisma: { ticketColaborador: { findMany } } })).toEqual([]);
+    expect(findMany).not.toHaveBeenCalled();
   });
 });
 

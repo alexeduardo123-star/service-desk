@@ -21,9 +21,9 @@ const ABAS = [
 
 const OPCOES_NOTIFICACAO = [
   { name: "notificarNovoTicket", label: "Novos chamados", descricao: "Aviso quando um chamado for aberto (técnicos e administradores)." },
-  { name: "notificarAtribuicao", label: "Atribuições", descricao: "Aviso quando um chamado for atribuído a você ou quando o seu chamado ganhar um atendente." },
-  { name: "notificarStatus", label: "Mudanças de status", descricao: "Aviso quando um chamado seu mudar de status." },
-  { name: "notificarComentario", label: "Novos comentários", descricao: "Aviso quando alguém comentar em um chamado seu." },
+  { name: "notificarAtribuicao", label: "Atribuições", descricao: "Aviso quando um chamado for atribuído ou encaminhado a você, quando você entrar como colaborador ou quando o seu chamado mudar de atendente." },
+  { name: "notificarStatus", label: "Mudanças de status", descricao: "Aviso quando um chamado em que você está envolvido (como solicitante, atendente ou colaborador) mudar de status." },
+  { name: "notificarComentario", label: "Novos comentários", descricao: "Aviso quando alguém comentar em um chamado em que você está envolvido." },
   { name: "notificarEmail", label: "Receber também por email", descricao: "Envia uma cópia de cada aviso para o seu email cadastrado." },
 ];
 

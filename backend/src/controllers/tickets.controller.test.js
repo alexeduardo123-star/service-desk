@@ -23,6 +23,8 @@ vi.mock("../utils/eventosTicket.js", async (original) => ({
   ...(await original()),
   avisarTicketSuspenso: vi.fn(),
   avisarTicketAtribuido: vi.fn(),
+  avisarTicketEncaminhado: vi.fn(),
+  avisarColaboradorAdicionado: vi.fn(),
   avisarTicketRetomado: vi.fn(),
   avisarTicketCriado: vi.fn(),
   avisarAprovacaoPendente: vi.fn(),
@@ -165,7 +167,12 @@ describe("tickets.controller: encaminhar", () => {
     expect(prisma.comentario.create).toHaveBeenCalledWith({
       data: { ticketId: 7, usuarioId: 20, mensagem: "Chamado encaminhado de Téc para Bruno. Motivo: especialista em rede" },
     });
-    expect(eventos.avisarTicketAtribuido).toHaveBeenCalledWith(expect.objectContaining({ id: 7, tecnicoId: 21 }), TECNICO);
+    expect(eventos.avisarTicketEncaminhado).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 7, tecnicoId: 21 }),
+      TECNICO,
+      { anteriorId: 20, motivo: "especialista em rede" }
+    );
+    expect(eventos.avisarTicketAtribuido).not.toHaveBeenCalled();
     expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ tecnicoId: 21 }));
   });
 
@@ -208,7 +215,7 @@ describe("tickets.controller: encaminhar", () => {
       expect(res.json).toHaveBeenCalledWith({ erro: mensagem });
     }
     expect(prisma.$transaction).not.toHaveBeenCalled();
-    expect(eventos.avisarTicketAtribuido).not.toHaveBeenCalled();
+    expect(eventos.avisarTicketEncaminhado).not.toHaveBeenCalled();
   });
 
   it("respeita a aprovação pendente do gestor", async () => {
@@ -301,6 +308,7 @@ describe("tickets.controller: colaboradores", () => {
     });
     expect(res.status).toHaveBeenCalledWith(201);
     expect(res.json).toHaveBeenCalledWith([{ id: 21, nome: "Bruno" }]);
+    expect(eventos.avisarColaboradorAdicionado).toHaveBeenCalledWith(expect.objectContaining({ id: 7 }), TECNICO, 21);
   });
 
   it("recusa com 409 quando a regra não deixa adicionar", async () => {
@@ -322,6 +330,7 @@ describe("tickets.controller: colaboradores", () => {
       expect(res.json).toHaveBeenCalledWith({ erro: mensagem });
     }
     expect(prisma.$transaction).not.toHaveBeenCalled();
+    expect(eventos.avisarColaboradorAdicionado).not.toHaveBeenCalled();
   });
 
   it("404 para chamado ou usuário inexistente ao adicionar", async () => {

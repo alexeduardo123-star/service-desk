@@ -39,6 +39,8 @@ export const PAPEL_LABEL = {
 export const TIPO_NOTIFICACAO_LABEL = {
   TICKET_CRIADO: "Novo chamado",
   TICKET_ATRIBUIDO: "Atribuição",
+  TICKET_ENCAMINHADO: "Encaminhamento",
+  TICKET_COLABORADOR: "Colaboração",
   TICKET_STATUS: "Status",
   TICKET_COMENTARIO: "Comentário",
   TICKET_APROVACAO: "Aprovação",
@@ -48,6 +50,8 @@ export const TIPO_NOTIFICACAO_LABEL = {
 export const TIPO_NOTIFICACAO_COR = {
   TICKET_CRIADO: "bg-amber-100 text-amber-800",
   TICKET_ATRIBUIDO: "bg-purple-100 text-purple-800",
+  TICKET_ENCAMINHADO: "bg-indigo-100 text-indigo-800",
+  TICKET_COLABORADOR: "bg-cyan-100 text-cyan-800",
   TICKET_STATUS: "bg-emerald-100 text-emerald-800",
   TICKET_COMENTARIO: "bg-blue-100 text-blue-800",
   TICKET_APROVACAO: "bg-amber-100 text-amber-800",

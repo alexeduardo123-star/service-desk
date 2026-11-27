@@ -1,6 +1,13 @@
 import prisma from "../config/prisma.js";
 import { enviarEmail } from "./mailer.js";
-import { buscarEquipe, buscarGestoresDoSetor, buscarUsuario, notificarUsuarios } from "./notificar.js";
+import {
+  buscarColaboradores,
+  buscarEquipe,
+  buscarGestoresDoSetor,
+  buscarUsuario,
+  filtrarDestinatarios,
+  notificarUsuarios,
+} from "./notificar.js";
 
 const STATUS_LABEL = {
   ABERTO: "Aberto",
@@ -12,21 +19,28 @@ const STATUS_LABEL = {
 
 const DEPS_PADRAO = { prisma, enviarEmail };
 
+// Envolvidos no chamado: solicitante, atendente responsável e colaboradores,
+// sem o autor da ação, sem repetidos e sem inativos. `pessoas` traz os
+// usuários já carregados: { solicitante, tecnico, colaboradores: [] }.
+export function envolvidosDoChamado(pessoas, autor) {
+  const { solicitante = null, tecnico = null, colaboradores = [] } = pessoas ?? {};
+  return filtrarDestinatarios([solicitante, tecnico, ...colaboradores], autor?.id);
+}
+
 // Quem deve ser avisado de um comentário: a outra ponta da conversa.
-// - solicitante comentou  -> técnico responsável (ou a equipe, se ainda não há um)
-// - equipe comentou       -> solicitante (e o técnico responsável, se for outra pessoa)
+// - solicitante comentou  -> responsável e colaboradores (ou a equipe, se não há ninguém)
+// - equipe comentou       -> solicitante, responsável e colaboradores
+// `ticket.colaboradores` é uma lista de { id } (pode faltar em chamado antigo).
 export function destinatariosDoComentario(ticket, autor) {
   const ids = new Set();
-  let incluirEquipe = false;
+  const colaboradores = (ticket.colaboradores ?? []).map((c) => c.id);
 
-  if (autor.papel === "SOLICITANTE") {
-    if (ticket.tecnicoId) ids.add(ticket.tecnicoId);
-    else incluirEquipe = true;
-  } else {
-    ids.add(ticket.solicitanteId);
-    if (ticket.tecnicoId) ids.add(ticket.tecnicoId);
-  }
+  if (autor.papel !== "SOLICITANTE") ids.add(ticket.solicitanteId);
+  if (ticket.tecnicoId) ids.add(ticket.tecnicoId);
+  for (const id of colaboradores) ids.add(id);
   ids.delete(autor.id);
+
+  const incluirEquipe = autor.papel === "SOLICITANTE" && ids.size === 0;
   return { ids: [...ids], incluirEquipe };
 }
 
@@ -88,6 +102,91 @@ async function executar(nome, fn) {
   }
 }
 
+// Carrega solicitante, responsável e colaboradores do chamado como destinatários.
+// Os ids vêm do chamado que o controller acabou de gravar; os colaboradores,
+// do banco (os tickets devolvidos pelas rotas de alteração não os trazem).
+async function carregarEnvolvidos(ticket, deps) {
+  const [solicitante, tecnico, colaboradores] = await Promise.all([
+    buscarUsuario(ticket.solicitanteId, deps),
+    buscarUsuario(ticket.tecnicoId, deps),
+    buscarColaboradores(ticket.id, deps),
+  ]);
+  return { solicitante, tecnico, colaboradores };
+}
+
+// Mesmo aviso para todos os envolvidos (menos o autor).
+async function avisarEnvolvidos(ticket, autor, { tipo, titulo, mensagem }, deps) {
+  const destinatarios = envolvidosDoChamado(await carregarEnvolvidos(ticket, deps), autor);
+  await notificarUsuarios({ destinatarios, tipo, titulo, mensagem, ticketId: ticket.id, autorId: autor.id }, deps);
+}
+
+// Textos dos avisos de encaminhamento, um para cada grupo de pessoas.
+export function mensagensDeEncaminhamento(ticket, autor, novo, motivo) {
+  const nomeNovo = novo?.nome ?? "outro atendente";
+  return {
+    novo: {
+      titulo: `Chamado #${ticket.id} encaminhado para você`,
+      mensagem: `${autor.nome} encaminhou "${ticket.titulo}" para você. Motivo: ${motivo}`,
+    },
+    anterior: {
+      titulo: `Chamado #${ticket.id} mudou de atendente`,
+      mensagem: `${autor.nome} encaminhou "${ticket.titulo}" para ${nomeNovo}. Motivo: ${motivo}`,
+    },
+    demais: {
+      titulo: `Chamado #${ticket.id} mudou de atendente`,
+      mensagem: `"${ticket.titulo}" agora está com ${nomeNovo}.`,
+    },
+  };
+}
+
+// Encaminhamento: o novo atendente recebe o chamado com o motivo; o anterior
+// fica sabendo para quem foi (também com o motivo); solicitante e colaboradores
+// só ficam sabendo quem cuida agora. `ticket` já é o chamado depois da troca.
+export function avisarTicketEncaminhado(ticket, autor, { anteriorId = null, motivo }, deps = DEPS_PADRAO) {
+  return executar("avisarTicketEncaminhado", async () => {
+    const [novo, anterior, pessoas] = await Promise.all([
+      buscarUsuario(ticket.tecnicoId, deps),
+      buscarUsuario(anteriorId, deps),
+      carregarEnvolvidos({ ...ticket, tecnicoId: null }, deps),
+    ]);
+    const textos = mensagensDeEncaminhamento(ticket, autor, novo, motivo);
+    const jaAvisados = new Set([novo?.id, anterior?.id]);
+    const demais = envolvidosDoChamado(pessoas, autor).filter((u) => !jaAvisados.has(u.id));
+
+    const grupos = [
+      [novo ? [novo] : [], textos.novo],
+      [anterior ? [anterior] : [], textos.anterior],
+      [demais, textos.demais],
+    ];
+    for (const [destinatarios, { titulo, mensagem }] of grupos) {
+      if (destinatarios.length === 0) continue;
+      await notificarUsuarios(
+        { destinatarios, tipo: "TICKET_ENCAMINHADO", titulo, mensagem, ticketId: ticket.id, autorId: autor.id },
+        deps
+      );
+    }
+  });
+}
+
+// Avisa quem acabou de entrar como colaborador.
+export function avisarColaboradorAdicionado(ticket, autor, usuarioId, deps = DEPS_PADRAO) {
+  return executar("avisarColaboradorAdicionado", async () => {
+    const colaborador = await buscarUsuario(usuarioId, deps);
+    if (!colaborador) return;
+    await notificarUsuarios(
+      {
+        destinatarios: [colaborador],
+        tipo: "TICKET_COLABORADOR",
+        titulo: `Você foi adicionado ao chamado #${ticket.id}`,
+        mensagem: `${autor.nome} adicionou você como colaborador em "${ticket.titulo}".`,
+        ticketId: ticket.id,
+        autorId: autor.id,
+      },
+      deps
+    );
+  });
+}
+
 export function avisarTicketCriado(ticket, autor, deps = DEPS_PADRAO) {
   return executar("avisarTicketCriado", async () => {
     const equipe = await buscarEquipe(deps);
@@ -141,29 +240,28 @@ export function avisarTicketAtribuido(ticket, autor, deps = DEPS_PADRAO) {
   });
 }
 
+// Mudança de status: todos os envolvidos (menos quem mudou).
 export function avisarStatusAlterado(ticket, autor, deps = DEPS_PADRAO) {
-  return executar("avisarStatusAlterado", async () => {
-    const solicitante = await buscarUsuario(ticket.solicitanteId, deps);
-    await notificarUsuarios(
+  return executar("avisarStatusAlterado", () =>
+    avisarEnvolvidos(
+      ticket,
+      autor,
       {
-        destinatarios: [solicitante],
         tipo: "TICKET_STATUS",
         titulo: `Chamado #${ticket.id}: ${STATUS_LABEL[ticket.status] ?? ticket.status}`,
         mensagem: `O status de "${ticket.titulo}" mudou para ${STATUS_LABEL[ticket.status] ?? ticket.status}.`,
-        ticketId: ticket.id,
-        autorId: autor.id,
       },
       deps
-    );
-  });
+    )
+  );
 }
 
-// Avisa quem está cuidando do chamado que o solicitante respondeu e o
-// atendimento voltou a andar. Sem técnico responsável, avisa a equipe.
+// Avisa quem cuida do chamado (responsável e colaboradores) que o solicitante
+// respondeu e o atendimento voltou a andar. Sem ninguém, avisa a equipe.
 export function avisarRetomadaDeAtendimento(ticket, autor, deps = DEPS_PADRAO) {
   return executar("avisarRetomadaDeAtendimento", async () => {
-    const tecnico = await buscarUsuario(ticket.tecnicoId, deps);
-    const destinatarios = tecnico ? [tecnico] : await buscarEquipe(deps);
+    const envolvidos = envolvidosDoChamado(await carregarEnvolvidos(ticket, deps), autor);
+    const destinatarios = envolvidos.length > 0 ? envolvidos : await buscarEquipe(deps);
     await notificarUsuarios(
       {
         destinatarios,
@@ -178,40 +276,36 @@ export function avisarRetomadaDeAtendimento(ticket, autor, deps = DEPS_PADRAO) {
   });
 }
 
-// Avisa o solicitante que o atendimento foi suspenso, já com o motivo.
+// Avisa os envolvidos que o atendimento foi suspenso, já com o motivo.
 export function avisarTicketSuspenso(ticket, autor, motivo, deps = DEPS_PADRAO) {
-  return executar("avisarTicketSuspenso", async () => {
-    const solicitante = await buscarUsuario(ticket.solicitanteId, deps);
-    await notificarUsuarios(
+  return executar("avisarTicketSuspenso", () =>
+    avisarEnvolvidos(
+      ticket,
+      autor,
       {
-        destinatarios: [solicitante],
         tipo: "TICKET_STATUS",
         titulo: `Chamado #${ticket.id}: ${STATUS_LABEL.SUSPENSO}`,
         mensagem: `${autor.nome} suspendeu "${ticket.titulo}". Motivo: ${motivo}`,
-        ticketId: ticket.id,
-        autorId: autor.id,
       },
       deps
-    );
-  });
+    )
+  );
 }
 
-// Avisa o solicitante que o chamado saiu da suspensão e voltou a andar.
+// Avisa os envolvidos que o chamado saiu da suspensão e voltou a andar.
 export function avisarTicketRetomado(ticket, autor, deps = DEPS_PADRAO) {
-  return executar("avisarTicketRetomado", async () => {
-    const solicitante = await buscarUsuario(ticket.solicitanteId, deps);
-    await notificarUsuarios(
+  return executar("avisarTicketRetomado", () =>
+    avisarEnvolvidos(
+      ticket,
+      autor,
       {
-        destinatarios: [solicitante],
         tipo: "TICKET_STATUS",
         titulo: `Chamado #${ticket.id} voltou para ${STATUS_LABEL.EM_ANDAMENTO}`,
         mensagem: `${autor.nome} retomou o atendimento de "${ticket.titulo}".`,
-        ticketId: ticket.id,
-        autorId: autor.id,
       },
       deps
-    );
-  });
+    )
+  );
 }
 
 // Chamado de categoria com aprovação: avisa os gestores do setor (o time de
@@ -233,36 +327,37 @@ export function avisarAprovacaoPendente(ticket, autor, deps = DEPS_PADRAO) {
   });
 }
 
-// Avisa o solicitante da decisão do gestor (e o motivo, quando rejeitado).
+// Avisa os envolvidos da decisão do gestor (e o motivo, quando rejeitado).
 export function avisarAprovacaoDecidida(ticket, gestor, aprovado, motivo, deps = DEPS_PADRAO) {
-  return executar("avisarAprovacaoDecidida", async () => {
-    const solicitante = await buscarUsuario(ticket.solicitanteId, deps);
-    await notificarUsuarios(
+  return executar("avisarAprovacaoDecidida", () =>
+    avisarEnvolvidos(
+      ticket,
+      gestor,
       {
-        destinatarios: [solicitante],
         tipo: "TICKET_APROVACAO",
         titulo: aprovado ? `Chamado #${ticket.id} aprovado` : `Chamado #${ticket.id} rejeitado`,
         mensagem: aprovado
           ? `${gestor.nome} aprovou "${ticket.titulo}". Ele segue para atendimento.`
           : `${gestor.nome} rejeitou "${ticket.titulo}". Motivo: ${motivo}`,
-        ticketId: ticket.id,
-        autorId: gestor.id,
       },
       deps
-    );
-  });
+    )
+  );
 }
 
 export function avisarComentario(ticket, autor, deps = DEPS_PADRAO) {
   return executar("avisarComentario", async () => {
-    const { ids, incluirEquipe } = destinatariosDoComentario(ticket, autor);
-    const [pessoas, equipe] = await Promise.all([
-      Promise.all(ids.map((id) => buscarUsuario(id, deps))),
-      incluirEquipe ? buscarEquipe(deps) : [],
-    ]);
+    const pessoas = await carregarEnvolvidos(ticket, deps);
+    const { ids, incluirEquipe } = destinatariosDoComentario({ ...ticket, colaboradores: pessoas.colaboradores }, autor);
+    const porId = new Map(
+      [pessoas.solicitante, pessoas.tecnico, ...pessoas.colaboradores].filter(Boolean).map((u) => [u.id, u])
+    );
+    const alvos = filtrarDestinatarios(ids.map((id) => porId.get(id)), autor.id);
+    // Solicitante comentou e ninguém ativo cuida do chamado: a equipe fica sabendo.
+    const equipe = incluirEquipe || (autor.papel === "SOLICITANTE" && alvos.length === 0) ? await buscarEquipe(deps) : [];
     await notificarUsuarios(
       {
-        destinatarios: [...pessoas, ...equipe],
+        destinatarios: [...alvos, ...equipe],
         tipo: "TICKET_COMENTARIO",
         titulo: `Novo comentário no chamado #${ticket.id}`,
         mensagem: `${autor.nome} comentou em "${ticket.titulo}".`,

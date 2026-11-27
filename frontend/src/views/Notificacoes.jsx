@@ -245,7 +245,16 @@ export default function Notificacoes() {
                     <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${TIPO_NOTIFICACAO_COR[n.tipo]}`}>
                       {TIPO_NOTIFICACAO_LABEL[n.tipo]}
                     </span>
-                    <h2 className={`text-sm text-gray-900 ${n.lida ? "font-medium" : "font-bold"}`}>{n.titulo}</h2>
+                    <h2 className={`text-sm text-gray-900 ${n.lida ? "font-medium" : "font-bold"}`}>
+                      {/* Notificação de chamado: o título também abre o chamado (e marca como lida). */}
+                      {n.ticketId ? (
+                        <Link to={`/tickets/${n.ticketId}`} onClick={() => abrir(n)} className="hover:text-blue-600 hover:underline">
+                          {n.titulo}
+                        </Link>
+                      ) : (
+                        n.titulo
+                      )}
+                    </h2>
                   </div>
                   <p className="mt-1 text-sm text-gray-600">{n.mensagem}</p>
                   <p className="mt-1 text-xs text-gray-400" title={formatDate(n.createdAt)}>

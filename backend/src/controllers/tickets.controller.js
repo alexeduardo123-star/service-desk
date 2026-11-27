@@ -4,6 +4,8 @@ import { montarFiltroTickets, montarOrdenacaoTickets, fechadosNoFim } from "../u
 import {
   avisarTicketCriado,
   avisarTicketAtribuido,
+  avisarTicketEncaminhado,
+  avisarColaboradorAdicionado,
   avisarStatusAlterado,
   avisarTicketSuspenso,
   avisarTicketRetomado,
@@ -248,7 +250,7 @@ export const encaminhar = asyncHandler(async (req, res) => {
     }),
     prisma.ticketColaborador.deleteMany({ where: colaboradorQueViraResponsavel(atual.id, destino.id) }),
   ]);
-  avisarTicketAtribuido(ticket, req.user);
+  avisarTicketEncaminhado(ticket, req.user, { anteriorId: atual.tecnicoId, motivo });
   res.json(ticket);
 });
 
@@ -289,6 +291,7 @@ export const adicionarColaborador = asyncHandler(async (req, res) => {
       data: { ticketId, usuarioId: req.user.id, mensagem: comentarioColaboradorAdicionado(req.user, usuario) },
     }),
   ]);
+  avisarColaboradorAdicionado(ticket, req.user, usuarioId);
   res.status(201).json(await colaboradoresDoTicket(ticketId));
 });
 

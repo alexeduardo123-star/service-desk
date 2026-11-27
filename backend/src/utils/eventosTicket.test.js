@@ -1,5 +1,11 @@
 import { describe, it, expect, vi } from "vitest";
 import {
+  avisarAprovacaoDecidida,
+  avisarColaboradorAdicionado,
+  avisarComentario,
+  avisarTicketEncaminhado,
+  envolvidosDoChamado,
+  mensagensDeEncaminhamento,
   destinatariosDoComentario,
   avisarStatusAlterado,
   avisarTicketCriado,
@@ -17,12 +23,15 @@ import {
 
 const TICKET = { id: 7, titulo: "Notebook não liga", solicitanteId: 10, tecnicoId: 20, status: "FECHADO" };
 
-function depsFalsas({ usuarios = {}, equipe = [] } = {}) {
+function depsFalsas({ usuarios = {}, equipe = [], colaboradores = [] } = {}) {
   return {
     prisma: {
       usuario: {
         findUnique: vi.fn(({ where }) => Promise.resolve(usuarios[where.id] ?? null)),
         findMany: vi.fn().mockResolvedValue(equipe),
+      },
+      ticketColaborador: {
+        findMany: vi.fn().mockResolvedValue(colaboradores.map((usuario) => ({ usuario }))),
       },
       configuracaoUsuario: { findMany: vi.fn().mockResolvedValue([]) },
       notificacao: { createMany: vi.fn().mockResolvedValue({ count: 1 }) },
@@ -255,5 +264,250 @@ describe("regras de encaminhamento", () => {
     expect(comentarioDeEncaminhamento(null, BRUNO, "fila da manhã")).toBe(
       "Chamado encaminhado de sem atendente para Bruno. Motivo: fila da manhã"
     );
+  });
+});
+
+// --- Envolvidos no chamado: solicitante (10), responsável (20) e colaboradores (30, 31).
+
+const PESSOAS = {
+  10: { id: 10, nome: "Ana", email: "ana@x.com", ativo: true },
+  20: { id: 20, nome: "Téc", email: "tec@x.com", ativo: true },
+  21: { id: 21, nome: "Bruno", email: "bruno@x.com", ativo: true },
+  30: { id: 30, nome: "Carla", email: "carla@x.com", ativo: true },
+  31: { id: 31, nome: "Davi", email: "davi@x.com", ativo: true },
+};
+const COLABORADORES = [PESSOAS[30], PESSOAS[31]];
+const ABERTO = { ...TICKET, status: "EM_ANDAMENTO" };
+
+// Ids de quem recebeu cada chamada de createMany, na ordem.
+function notificados(deps) {
+  return deps.prisma.notificacao.createMany.mock.calls.map((c) => c[0].data.map((n) => n.usuarioId));
+}
+const todosNotificados = (deps) => notificados(deps).flat().sort((a, b) => a - b);
+
+describe("envolvidosDoChamado", () => {
+  const pessoas = { solicitante: PESSOAS[10], tecnico: PESSOAS[20], colaboradores: COLABORADORES };
+
+  it("solicitante, responsável e colaboradores, sem o autor", () => {
+    expect(envolvidosDoChamado(pessoas, { id: 1 }).map((u) => u.id)).toEqual([10, 20, 30, 31]);
+    expect(envolvidosDoChamado(pessoas, { id: 20 }).map((u) => u.id)).toEqual([10, 30, 31]);
+    expect(envolvidosDoChamado(pessoas, { id: 30 }).map((u) => u.id)).toEqual([10, 20, 31]);
+  });
+
+  it("chamado antigo, sem responsável nem colaboradores", () => {
+    expect(envolvidosDoChamado({ solicitante: PESSOAS[10], tecnico: null }, { id: 20 }).map((u) => u.id)).toEqual([10]);
+  });
+
+  it("tira repetidos e inativos", () => {
+    const repetido = { solicitante: PESSOAS[10], tecnico: PESSOAS[20], colaboradores: [PESSOAS[20], { id: 40, ativo: false }] };
+    expect(envolvidosDoChamado(repetido, { id: 1 }).map((u) => u.id)).toEqual([10, 20]);
+  });
+
+  it("sem pessoas carregadas não quebra", () => {
+    expect(envolvidosDoChamado(null, { id: 1 })).toEqual([]);
+  });
+});
+
+describe("destinatariosDoComentario com colaboradores", () => {
+  const COM_COLAB = { ...ABERTO, colaboradores: [{ id: 30 }, { id: 31 }] };
+
+  it("equipe comenta: solicitante, responsável e colaboradores, menos o autor", () => {
+    expect(destinatariosDoComentario(COM_COLAB, { id: 20, papel: "TECNICO" })).toEqual({ ids: [10, 30, 31], incluirEquipe: false });
+    expect(destinatariosDoComentario(COM_COLAB, { id: 30, papel: "TECNICO" })).toEqual({ ids: [10, 20, 31], incluirEquipe: false });
+  });
+
+  it("solicitante comenta: responsável e colaboradores", () => {
+    expect(destinatariosDoComentario(COM_COLAB, { id: 10, papel: "SOLICITANTE" })).toEqual({ ids: [20, 30, 31], incluirEquipe: false });
+  });
+
+  it("solicitante comenta em chamado só com colaboradores: avisa eles, não a equipe", () => {
+    const r = destinatariosDoComentario({ ...COM_COLAB, tecnicoId: null }, { id: 10, papel: "SOLICITANTE" });
+    expect(r).toEqual({ ids: [30, 31], incluirEquipe: false });
+  });
+
+  it("solicitante comenta e não há ninguém: avisa a equipe", () => {
+    const r = destinatariosDoComentario({ ...ABERTO, tecnicoId: null, colaboradores: [] }, { id: 10, papel: "SOLICITANTE" });
+    expect(r).toEqual({ ids: [], incluirEquipe: true });
+  });
+});
+
+describe("avisarComentario", () => {
+  it("leva os colaboradores carregados do banco", async () => {
+    const deps = depsFalsas({ usuarios: PESSOAS, colaboradores: COLABORADORES });
+
+    await avisarComentario(ABERTO, { id: 20, nome: "Téc", papel: "TECNICO" }, deps);
+
+    expect(deps.prisma.ticketColaborador.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { ticketId: 7 } }));
+    expect(todosNotificados(deps)).toEqual([10, 30, 31]);
+    expect(deps.prisma.notificacao.createMany.mock.calls[0][0].data[0].tipo).toBe("TICKET_COMENTARIO");
+  });
+
+  it("solicitante comenta e o responsável está inativo: cai para a equipe", async () => {
+    const deps = depsFalsas({
+      usuarios: { ...PESSOAS, 20: { ...PESSOAS[20], ativo: false } },
+      equipe: [{ id: 1, ativo: true }],
+    });
+
+    await avisarComentario(ABERTO, { id: 10, nome: "Ana", papel: "SOLICITANTE" }, deps);
+
+    expect(todosNotificados(deps)).toEqual([1]);
+  });
+});
+
+describe("status, suspensão, retomada e aprovação avisam todos os envolvidos", () => {
+  const TEC = { id: 20, nome: "Téc" };
+  const casos = [
+    ["mudança de status", (deps) => avisarStatusAlterado({ ...ABERTO, status: "FECHADO" }, TEC, deps), "TICKET_STATUS"],
+    ["suspensão", (deps) => avisarTicketSuspenso({ ...ABERTO, status: "SUSPENSO" }, TEC, "peça", deps), "TICKET_STATUS"],
+    ["retomada", (deps) => avisarTicketRetomado(ABERTO, TEC, deps), "TICKET_STATUS"],
+    ["aprovação", (deps) => avisarAprovacaoDecidida(ABERTO, { id: 50, nome: "Gê" }, true, null, deps), "TICKET_APROVACAO"],
+    ["rejeição", (deps) => avisarAprovacaoDecidida(ABERTO, { id: 50, nome: "Gê" }, false, "sem verba", deps), "TICKET_APROVACAO"],
+  ];
+
+  for (const [nome, avisar, tipo] of casos) {
+    it(`${nome}: solicitante, responsável e colaboradores, menos o autor`, async () => {
+      const deps = depsFalsas({ usuarios: PESSOAS, colaboradores: COLABORADORES });
+
+      await avisar(deps);
+
+      const esperado = nome.startsWith("apro") || nome === "rejeição" ? [10, 20, 30, 31] : [10, 30, 31];
+      expect(todosNotificados(deps)).toEqual(esperado);
+      expect(deps.prisma.notificacao.createMany.mock.calls[0][0].data.every((n) => n.tipo === tipo)).toBe(true);
+    });
+  }
+
+  it("rejeição leva o motivo para todos", async () => {
+    const deps = depsFalsas({ usuarios: PESSOAS, colaboradores: COLABORADORES });
+
+    await avisarAprovacaoDecidida(ABERTO, { id: 50, nome: "Gê" }, false, "sem verba", deps);
+
+    const data = deps.prisma.notificacao.createMany.mock.calls[0][0].data;
+    expect(data.every((n) => n.mensagem === 'Gê rejeitou "Notebook não liga". Motivo: sem verba')).toBe(true);
+  });
+
+  it("retomada pelo solicitante (respondeu na espera) avisa responsável e colaboradores", async () => {
+    const deps = depsFalsas({ usuarios: PESSOAS, colaboradores: COLABORADORES });
+
+    await avisarRetomadaDeAtendimento(ABERTO, { id: 10, nome: "Ana" }, deps);
+
+    expect(todosNotificados(deps)).toEqual([20, 30, 31]);
+  });
+
+  it("falha ao buscar colaboradores não lança nem notifica pela metade", async () => {
+    const deps = depsFalsas({ usuarios: PESSOAS });
+    deps.prisma.ticketColaborador.findMany = vi.fn(() => Promise.reject(new Error("falhou")));
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    await avisarStatusAlterado(ABERTO, TEC, deps);
+
+    spy.mockRestore();
+    expect(deps.prisma.notificacao.createMany).not.toHaveBeenCalled();
+  });
+});
+
+describe("mensagensDeEncaminhamento", () => {
+  it("monta os textos de cada grupo", () => {
+    const m = mensagensDeEncaminhamento(TICKET, { nome: "Admin" }, { nome: "Bruno" }, "especialista em rede");
+    expect(m.novo).toEqual({
+      titulo: "Chamado #7 encaminhado para você",
+      mensagem: 'Admin encaminhou "Notebook não liga" para você. Motivo: especialista em rede',
+    });
+    expect(m.anterior).toEqual({
+      titulo: "Chamado #7 mudou de atendente",
+      mensagem: 'Admin encaminhou "Notebook não liga" para Bruno. Motivo: especialista em rede',
+    });
+    expect(m.demais).toEqual({ titulo: "Chamado #7 mudou de atendente", mensagem: '"Notebook não liga" agora está com Bruno.' });
+  });
+});
+
+describe("avisarTicketEncaminhado", () => {
+  // Já depois da troca: o responsável agora é o Bruno (21); antes era o Téc (20).
+  const ENCAMINHADO = { ...ABERTO, tecnicoId: 21 };
+  const ADMIN = { id: 1, nome: "Admin" };
+
+  function avisosPorPessoa(deps) {
+    return Object.fromEntries(
+      deps.prisma.notificacao.createMany.mock.calls.flatMap((c) => c[0].data.map((n) => [n.usuarioId, n]))
+    );
+  }
+
+  it("novo atendente, atendente anterior e os demais recebem avisos diferentes", async () => {
+    const deps = depsFalsas({ usuarios: PESSOAS, colaboradores: COLABORADORES });
+
+    await avisarTicketEncaminhado(ENCAMINHADO, ADMIN, { anteriorId: 20, motivo: "especialista em rede" }, deps);
+
+    const avisos = avisosPorPessoa(deps);
+    expect(Object.keys(avisos).map(Number).sort((a, b) => a - b)).toEqual([10, 20, 21, 30, 31]);
+    expect(avisos[21]).toMatchObject({ tipo: "TICKET_ENCAMINHADO", ticketId: 7, titulo: "Chamado #7 encaminhado para você" });
+    expect(avisos[21].mensagem).toContain("Motivo: especialista em rede");
+    expect(avisos[20].titulo).toBe("Chamado #7 mudou de atendente");
+    expect(avisos[20].mensagem).toContain("para Bruno. Motivo: especialista em rede");
+    for (const id of [10, 30, 31]) {
+      expect(avisos[id].mensagem).toBe('"Notebook não liga" agora está com Bruno.');
+    }
+  });
+
+  it("sem atendente anterior, avisa só o novo e os demais", async () => {
+    const deps = depsFalsas({ usuarios: PESSOAS });
+
+    await avisarTicketEncaminhado(ENCAMINHADO, ADMIN, { anteriorId: null, motivo: "fila" }, deps);
+
+    expect(notificados(deps)).toEqual([[21], [10]]);
+  });
+
+  it("quem encaminha o próprio chamado não é avisado", async () => {
+    const deps = depsFalsas({ usuarios: PESSOAS });
+
+    await avisarTicketEncaminhado(ENCAMINHADO, { id: 20, nome: "Téc" }, { anteriorId: 20, motivo: "troca de turno" }, deps);
+
+    expect(todosNotificados(deps)).toEqual([10, 21]);
+  });
+
+  it("nunca lança, mesmo se o banco falhar", async () => {
+    const deps = depsFalsas();
+    deps.prisma.usuario.findUnique = vi.fn(() => Promise.reject(new Error("falhou")));
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    await avisarTicketEncaminhado(ENCAMINHADO, ADMIN, { anteriorId: 20, motivo: "x" }, deps);
+
+    spy.mockRestore();
+    expect(deps.prisma.notificacao.createMany).not.toHaveBeenCalled();
+  });
+});
+
+describe("avisarColaboradorAdicionado", () => {
+  it("avisa só a pessoa adicionada", async () => {
+    const deps = depsFalsas({ usuarios: PESSOAS });
+
+    await avisarColaboradorAdicionado(ABERTO, { id: 20, nome: "Téc" }, 30, deps);
+
+    const data = deps.prisma.notificacao.createMany.mock.calls[0][0].data;
+    expect(data).toEqual([
+      {
+        usuarioId: 30,
+        tipo: "TICKET_COLABORADOR",
+        titulo: "Você foi adicionado ao chamado #7",
+        mensagem: 'Téc adicionou você como colaborador em "Notebook não liga".',
+        ticketId: 7,
+      },
+    ]);
+  });
+
+  it("quem adiciona a si mesmo não é avisado; usuário inexistente também não", async () => {
+    const deps = depsFalsas({ usuarios: PESSOAS });
+
+    await avisarColaboradorAdicionado(ABERTO, { id: 30, nome: "Carla" }, 30, deps);
+    await avisarColaboradorAdicionado(ABERTO, { id: 20, nome: "Téc" }, 99, deps);
+
+    expect(deps.prisma.notificacao.createMany).not.toHaveBeenCalled();
+  });
+
+  it("respeita a preferência de atribuições do usuário", async () => {
+    const deps = depsFalsas({ usuarios: PESSOAS });
+    deps.prisma.configuracaoUsuario.findMany.mockResolvedValue([{ usuarioId: 30, notificarAtribuicao: false }]);
+
+    await avisarColaboradorAdicionado(ABERTO, { id: 20, nome: "Téc" }, 30, deps);
+
+    expect(deps.prisma.notificacao.createMany).not.toHaveBeenCalled();
   });
 });
