@@ -4,10 +4,11 @@ import { useAuth } from "../auth/useAuth";
 import { PAPEL_LABEL } from "../constants/labels";
 import { NOME_APP } from "../constants/marca";
 import Logo from "../components/Logo";
+import MenuConfiguracoes from "../components/MenuConfiguracoes";
 import SinoNotificacoes from "../components/SinoNotificacoes";
 import configuracaoService from "../services/configuracaoService";
 import permissaoService from "../services/permissaoService";
-import { temPermissao, temAlgumaPermissao } from "../utils/permissoes";
+import { temPermissao } from "../utils/permissoes";
 import { salvarPreferencias } from "../utils/preferencias";
 
 const linkClasse = ({ isActive }) =>
@@ -19,11 +20,6 @@ export default function AppLayout() {
   const { usuario, logout, atualizarUsuario } = useAuth();
   const navigate = useNavigate();
   const podeVer = (chave) => temPermissao(usuario, chave);
-  const mostraCadastros = temAlgumaPermissao(usuario, [
-    "usuarios.gerenciar",
-    "cadastros.gerenciar",
-    "permissoes.gerenciar",
-  ]);
 
   // Carrega as preferências de exibição (fuso, itens por página) do backend
   // e guarda em cache para o restante do app usar.
@@ -57,32 +53,6 @@ export default function AppLayout() {
           <NavLink to="/kb" className={linkClasse}>Base de Conhecimento</NavLink>
           <NavLink to="/notificacoes" className={linkClasse}>Notificações</NavLink>
           {podeVer("relatorios.ver") && <NavLink to="/relatorios" className={linkClasse}>Relatórios</NavLink>}
-          {podeVer("equipamentos.gerenciar") && (
-            <NavLink to="/admin/equipamentos" className={linkClasse}>Equipamentos</NavLink>
-          )}
-          {podeVer("fornecedores.ver") && (
-            <NavLink to="/admin/fornecedores" className={linkClasse}>Fornecedores</NavLink>
-          )}
-          {podeVer("contratos.ver") && <NavLink to="/admin/contratos" className={linkClasse}>Contratos</NavLink>}
-          {mostraCadastros && (
-            <>
-              <p className="mt-4 mb-1 px-3 text-xs font-semibold uppercase text-gray-400">Administração</p>
-              {podeVer("usuarios.gerenciar") && <NavLink to="/admin/usuarios" className={linkClasse}>Usuários</NavLink>}
-              {podeVer("permissoes.gerenciar") && (
-                <NavLink to="/admin/perfis" className={linkClasse}>Perfis e permissões</NavLink>
-              )}
-              {podeVer("cadastros.gerenciar") && (
-                <>
-                  <NavLink to="/admin/departamentos" className={linkClasse}>Setores</NavLink>
-                  <NavLink to="/admin/categorias" className={linkClasse}>Categorias</NavLink>
-                  <NavLink to="/admin/prioridades" className={linkClasse}>Prioridades</NavLink>
-                  <NavLink to="/admin/servicos" className={linkClasse}>Serviços</NavLink>
-                  <NavLink to="/admin/assuntos" className={linkClasse}>Assuntos</NavLink>
-                  <NavLink to="/admin/formularios" className={linkClasse}>Formulários</NavLink>
-                </>
-              )}
-            </>
-          )}
         </nav>
       </aside>
 
@@ -93,9 +63,7 @@ export default function AppLayout() {
           </div>
           <div className="flex items-center gap-4">
             <SinoNotificacoes />
-            <NavLink to="/configuracoes" className="text-sm font-medium text-gray-600 hover:text-blue-600">
-              Configurações
-            </NavLink>
+            <MenuConfiguracoes usuario={usuario} />
             <button onClick={handleLogout} className="text-sm font-medium text-red-600 hover:underline">
               Sair
             </button>
