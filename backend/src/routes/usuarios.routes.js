@@ -11,6 +11,8 @@ router.use(authMiddleware);
 router.get("/me", usuarios.me);
 router.put("/me", validate(perfilSchema), usuarios.atualizarPerfil);
 router.put("/me/senha", validate(alterarSenhaSchema), usuarios.alterarSenha);
+// Antes de "/:id", senão "atendentes" seria lido como um id.
+router.get("/atendentes", requirePermissao("cadastros.gerenciar", "tickets.tratar", "agenda.ver"), usuarios.listarAtendentes);
 router.get("/", requirePermissao("usuarios.gerenciar"), usuarios.listar);
 router.get("/:id", requirePermissao("usuarios.gerenciar"), usuarios.buscar);
 router.post("/", requirePermissao("usuarios.gerenciar"), usuarios.criar);

@@ -54,6 +54,21 @@ export const PERMISSOES = {
     grupo: "Base de conhecimento",
     padrao: ["TECNICO", "GESTOR"],
   },
+  "agenda.ver": {
+    rotulo: "Ver a agenda (prazos de SLA e atendimentos agendados)",
+    grupo: "Agenda",
+    padrao: ["TECNICO", "GESTOR"],
+  },
+  "agenda.gerenciar": {
+    rotulo: "Agendar, editar e cancelar os próprios atendimentos",
+    grupo: "Agenda",
+    padrao: ["TECNICO", "GESTOR"],
+  },
+  "agenda.todos": {
+    rotulo: "Agendar e alterar atendimentos de outros atendentes",
+    grupo: "Agenda",
+    padrao: ["GESTOR"],
+  },
   "equipamentos.gerenciar": {
     rotulo: "Cadastrar e editar equipamentos",
     grupo: "Ativos e contratos",

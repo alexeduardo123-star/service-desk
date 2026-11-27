@@ -52,6 +52,7 @@ export default function AppLayout() {
           <NavLink to="/kanban" className={linkClasse}>Kanban</NavLink>
           <NavLink to="/kb" className={linkClasse}>Base de Conhecimento</NavLink>
           <NavLink to="/notificacoes" className={linkClasse}>Notificações</NavLink>
+          {podeVer("agenda.ver") && <NavLink to="/agenda" className={linkClasse}>Agenda</NavLink>}
           {podeVer("relatorios.ver") && <NavLink to="/relatorios" className={linkClasse}>Relatórios</NavLink>}
         </nav>
       </aside>

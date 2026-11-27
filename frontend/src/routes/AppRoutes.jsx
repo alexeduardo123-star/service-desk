@@ -18,6 +18,7 @@ import Prioridades from "../views/Prioridades";
 import Equipamentos from "../views/Equipamentos";
 import Contratos from "../views/Contratos";
 import Fornecedores from "../views/Fornecedores";
+import Agenda from "../views/Agenda";
 import Servicos from "../views/Servicos";
 import Assuntos from "../views/Assuntos";
 import Formularios from "../views/Formularios";
@@ -58,6 +59,14 @@ export default function AppRoutes() {
         <Route path="/configuracoes" element={<Configuracoes />} />
         <Route path="/notificacoes" element={<Notificacoes />} />
 
+        <Route
+          path="/agenda"
+          element={
+            <RotaPrivada permissao="agenda.ver">
+              <Agenda />
+            </RotaPrivada>
+          }
+        />
         <Route
           path="/relatorios"
           element={

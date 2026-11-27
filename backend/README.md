@@ -185,10 +185,14 @@ sem duplicar a camada de acesso a dados da aplicação.
 - `POST /auth/redefinir-senha` `{ email, codigo, novaSenha }` (público):
   valida o código (compara hash) e a expiração, e caso válido atualiza
   `senhaHash` e limpa o token.
-- Envio de email: configurável via `SMTP_HOST`/`SMTP_PORT`/`SMTP_USER`/
-  `SMTP_PASS`/`SMTP_FROM` no `.env`. Sem SMTP configurado, o email é apenas
-  impresso no console do backend (modo desenvolvimento) — útil para testar o
-  fluxo localmente sem uma conta de email real.
+- Envio de email: configurável via `SMTP_HOST`/`SMTP_PORT`/`SMTP_SECURE`/
+  `SMTP_USER`/`SMTP_PASS`/`SMTP_FROM` no `.env` (exemplos de Gmail e Outlook em
+  `.env.example`). **Sem `SMTP_HOST` o email NÃO é enviado: ele é apenas impresso
+  no console do backend** (modo desenvolvimento). Ao subir, o servidor testa a
+  conexão SMTP e avisa no log se algo estiver errado. Se o envio falhar, o
+  cadastro/recuperação não quebra: o erro vai para o log e o usuário pode pedir
+  um novo código. Os avisos de chamado por email só saem para quem ligar
+  "Receber por email" em Configurações > Notificações.
 
 ## Como o CORS funciona aqui
 
@@ -304,4 +308,20 @@ O catálogo de atendimento é organizado em **serviços** (`/servicos`), cada um
 - `GET /assuntos?servicoId=1` lista só os assuntos de um serviço; `GET /assuntos/:id` já devolve o formulário com os campos em ordem.
 - Campos do formulário: `TEXTO`, `TEXTO_LONGO`, `NUMERO`, `DATA`, `SELECAO` (exige pelo menos 2 opções) e `CHECKBOX`. Ao editar, a lista de campos enviada substitui a anterior.
 - Não é possível excluir um serviço que tenha assuntos nem um formulário vinculado a algum assunto (retorna `409`).
+- **Atendente responsável**: o assunto pode ter um `responsavelId` (técnico ou administrador ativo). O chamado aberto com esse assunto já nasce atribuído a ele, em andamento, e ele é avisado. Se a categoria exige aprovação do gestor, o chamado é atribuído mas fica `ABERTO` até a decisão. Sem responsável (ou com responsável inativo), o chamado segue para a fila da equipe.
+- `GET /usuarios/atendentes` lista técnicos e administradores ativos (`id`, `nome`, `papel`) para quem tem `cadastros.gerenciar` ou `tickets.tratar`, sem precisar gerenciar usuários.
 
+
+## Agenda
+
+Calendário com os **prazos de SLA** dos chamados em aberto (abertura + horas da prioridade; fechados, suspensos e rejeitados não entram) e os **atendimentos agendados** por atendente (tabela `agendamentos`, opcionalmente ligados a um chamado).
+
+| Rota | Permissão | Descrição |
+|---|---|---|
+| `GET /agenda?inicio=&fim=&atendenteId=` | `agenda.ver` | `{ prazos, agendamentos }` do período (máx. 62 dias); `atendenteId` filtra os dois |
+| `POST /agenda` | `agenda.gerenciar` | agenda um atendimento (sem `atendenteId`, é para quem está logado) |
+| `PUT /agenda/:id` | `agenda.gerenciar` | altera um atendimento |
+| `DELETE /agenda/:id` | `agenda.gerenciar` | cancela um atendimento |
+
+- Só o próprio atendente mexe nos seus atendimentos; `agenda.todos` (padrão: gestor e administrador) permite agendar/alterar/cancelar os de qualquer atendente.
+- O atendente precisa estar ativo e ser técnico ou administrador. Atendimento de no máximo 12 h; dois atendimentos do mesmo atendente não podem se sobrepor (`409`; horários colados são permitidos).

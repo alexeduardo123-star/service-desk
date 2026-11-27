@@ -180,6 +180,7 @@ CREATE TABLE "assuntos" (
     "servicoId"     INTEGER NOT NULL REFERENCES "servicos" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
     "formularioId"  INTEGER REFERENCES "formularios" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
     "prioridadeId"  INTEGER REFERENCES "prioridades" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
+    "responsavelId" INTEGER REFERENCES "usuarios" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
     "createdAt"     TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt"     TIMESTAMP(3) NOT NULL,
     UNIQUE ("servicoId", "nome")
@@ -187,6 +188,19 @@ CREATE TABLE "assuntos" (
 
 ALTER TABLE "tickets" ADD CONSTRAINT "tickets_assuntoId_fkey"
     FOREIGN KEY ("assuntoId") REFERENCES "assuntos" ("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+CREATE TABLE "agendamentos" (
+    "id"           SERIAL PRIMARY KEY,
+    "titulo"       TEXT NOT NULL,
+    "descricao"    TEXT,
+    "inicio"       TIMESTAMP(3) NOT NULL,
+    "fim"          TIMESTAMP(3) NOT NULL,
+    "atendenteId"  INTEGER NOT NULL REFERENCES "usuarios" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+    "criadoPorId"  INTEGER REFERENCES "usuarios" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
+    "ticketId"     INTEGER REFERENCES "tickets" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+    "createdAt"    TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt"    TIMESTAMP(3) NOT NULL
+);
 
 CREATE INDEX "idx_tickets_solicitante" ON "tickets" ("solicitanteId");
 CREATE INDEX "idx_tickets_tecnico" ON "tickets" ("tecnicoId");
@@ -197,4 +211,7 @@ CREATE INDEX "idx_relatorios_salvos_usuario" ON "relatorios_salvos" ("usuarioId"
 CREATE INDEX "idx_formulario_campos_formulario" ON "formulario_campos" ("formularioId");
 CREATE INDEX "idx_assuntos_formulario" ON "assuntos" ("formularioId");
 CREATE INDEX "idx_assuntos_prioridade" ON "assuntos" ("prioridadeId");
+CREATE INDEX "idx_assuntos_responsavel" ON "assuntos" ("responsavelId");
 CREATE INDEX "idx_tickets_assunto" ON "tickets" ("assuntoId");
+CREATE INDEX "idx_agendamentos_atendente_inicio" ON "agendamentos" ("atendenteId", "inicio");
+CREATE INDEX "idx_agendamentos_ticket" ON "agendamentos" ("ticketId");

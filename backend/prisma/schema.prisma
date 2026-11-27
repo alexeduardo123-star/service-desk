@@ -63,6 +63,9 @@ model Usuario {
   ticketsSolicitados Ticket[]           @relation("TicketSolicitante")
   ticketsAtribuidos  Ticket[]           @relation("TicketTecnico")
   ticketsAprovados   Ticket[]           @relation("TicketAprovador")
+  assuntosResponsavel Assunto[]         @relation("AssuntoResponsavel")
+  agendamentos       Agendamento[]      @relation("AgendamentoAtendente")
+  agendamentosCriados Agendamento[]     @relation("AgendamentoCriador")
   comentarios        Comentario[]
   equipamentos       Equipamento[]
   artigos            BaseConhecimento[]
@@ -177,8 +180,32 @@ model Ticket {
 
   comentarios  Comentario[]
   notificacoes Notificacao[]
+  agendamentos Agendamento[]
 
   @@map("tickets")
+}
+
+// Atendimento agendado na agenda de um atendente (opcionalmente ligado a um
+// chamado). Os prazos de SLA que aparecem na agenda são calculados a partir dos
+// chamados, não ficam nesta tabela.
+model Agendamento {
+  id          Int      @id @default(autoincrement())
+  titulo      String
+  descricao   String?
+  inicio      DateTime
+  fim         DateTime
+  atendenteId Int
+  atendente   Usuario  @relation("AgendamentoAtendente", fields: [atendenteId], references: [id], onDelete: Cascade)
+  criadoPorId Int?
+  criadoPor   Usuario? @relation("AgendamentoCriador", fields: [criadoPorId], references: [id], onDelete: SetNull)
+  ticketId    Int?
+  ticket      Ticket?  @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([atendenteId, inicio])
+  @@index([ticketId])
+  @@map("agendamentos")
 }
 
 model Comentario {
@@ -326,6 +353,9 @@ model Assunto {
   // banco por causa dos assuntos antigos; o cadastro (API/tela) exige.
   prioridadeId Int?
   prioridade   Prioridade? @relation(fields: [prioridadeId], references: [id], onDelete: Restrict)
+  // Atendente responsável: os chamados deste assunto já nascem atribuídos a ele.
+  responsavelId Int?
+  responsavel   Usuario?   @relation("AssuntoResponsavel", fields: [responsavelId], references: [id], onDelete: SetNull)
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
 
@@ -334,6 +364,7 @@ model Assunto {
   @@unique([servicoId, nome])
   @@index([formularioId])
   @@index([prioridadeId])
+  @@index([responsavelId])
   @@map("assuntos")
 }
 
