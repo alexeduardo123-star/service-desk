@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 
 const notificar = vi.fn();
@@ -21,6 +21,7 @@ vi.mock("../services/equipamentoService", () => ({ default: { listar: vi.fn() } 
 vi.mock("../services/departamentoService", () => ({ default: { listar: vi.fn() } }));
 vi.mock("../services/usuarioService", () => ({ default: { me: vi.fn() } }));
 vi.mock("../services/assuntoService", () => ({ default: { listar: vi.fn(), buscar: vi.fn() } }));
+vi.mock("../services/baseConhecimentoService", () => ({ default: { sugestoes: vi.fn(), buscar: vi.fn() } }));
 
 const ticketService = (await import("../services/ticketService")).default;
 const categoriaService = (await import("../services/categoriaService")).default;
@@ -29,6 +30,7 @@ const equipamentoService = (await import("../services/equipamentoService")).defa
 const departamentoService = (await import("../services/departamentoService")).default;
 const usuarioService = (await import("../services/usuarioService")).default;
 const assuntoService = (await import("../services/assuntoService")).default;
+const baseConhecimentoService = (await import("../services/baseConhecimentoService")).default;
 const { default: NovoTicket } = await import("./NovoTicket");
 
 const SETORES = [
@@ -61,6 +63,111 @@ beforeEach(() => {
   departamentoService.listar.mockResolvedValue(SETORES);
   assuntoService.listar.mockResolvedValue([]);
   ticketService.criar.mockResolvedValue({ id: 99 });
+  baseConhecimentoService.sugestoes.mockResolvedValue([]);
+});
+
+describe("NovoTicket: sugestões da base de conhecimento", () => {
+  const SUGESTAO = { id: 3, titulo: "Impressora não imprime", trecho: "Reinicie o spooler de impressão.", categoriaId: 5 };
+  const blocoSugestoes = () => screen.findByRole("region", { name: "Isso pode resolver seu problema" });
+
+  beforeEach(() => {
+    usuarioService.me.mockResolvedValue({ id: 10, departamentoId: 2 });
+  });
+
+  it("depois de uma pausa na digitação, busca com o título e a descrição e mostra o bloco", async () => {
+    baseConhecimentoService.sugestoes.mockResolvedValue([SUGESTAO]);
+    renderizar();
+
+    fireEvent.change(screen.getByLabelText("Título"), { target: { value: "Impressora" } });
+    fireEvent.change(screen.getByLabelText("Descrição"), { target: { value: "não imprime nada" } });
+    // Ainda dentro do debounce: nada foi pedido.
+    expect(baseConhecimentoService.sugestoes).not.toHaveBeenCalled();
+
+    const bloco = await blocoSugestoes();
+    expect(baseConhecimentoService.sugestoes).toHaveBeenCalledTimes(1);
+    expect(baseConhecimentoService.sugestoes).toHaveBeenCalledWith({ texto: "Impressora não imprime nada", categoriaId: "" });
+    expect(within(bloco).getByText("Impressora não imprime")).toBeInTheDocument();
+    expect(within(bloco).getByText("Reinicie o spooler de impressão.")).toBeInTheDocument();
+  });
+
+  it("ao escolher a categoria, busca de novo com ela", async () => {
+    renderizar();
+    await screen.findByRole("option", { name: "Hardware" });
+    fireEvent.change(screen.getByLabelText("Título"), { target: { value: "Impressora" } });
+    await waitFor(() => expect(baseConhecimentoService.sugestoes).toHaveBeenCalledTimes(1));
+
+    fireEvent.change(screen.getByRole("combobox", { name: "Categoria" }), { target: { value: "5" } });
+
+    await waitFor(() => expect(baseConhecimentoService.sugestoes).toHaveBeenLastCalledWith({ texto: "Impressora", categoriaId: "5" }));
+  });
+
+  it("ao escolher o assunto, o nome dele entra na busca na hora", async () => {
+    assuntoService.listar.mockResolvedValue([
+      { id: 8, nome: "Novo acesso", ativo: true, prioridadeId: 7, servico: { nome: "Acessos" } },
+    ]);
+    assuntoService.buscar.mockResolvedValue({ id: 8, formulario: null });
+    renderizar();
+    await screen.findByRole("option", { name: "Acessos — Novo acesso" });
+
+    fireEvent.change(screen.getByRole("combobox", { name: "Assunto" }), { target: { value: "8" } });
+
+    await waitFor(() => expect(baseConhecimentoService.sugestoes).toHaveBeenCalledWith({ texto: "Acessos Novo acesso", categoriaId: "" }));
+  });
+
+  it("abre o artigo num modal sem sair do formulário", async () => {
+    baseConhecimentoService.sugestoes.mockResolvedValue([SUGESTAO]);
+    baseConhecimentoService.buscar.mockResolvedValue({ ...SUGESTAO, conteudo: "Passo 1: abra o painel.\nPasso 2: reinicie." });
+    renderizar();
+    fireEvent.change(screen.getByLabelText("Título"), { target: { value: "Impressora" } });
+
+    const bloco = await blocoSugestoes();
+    fireEvent.click(within(bloco).getByRole("button", { name: /Impressora não imprime/ }));
+
+    const modal = await screen.findByRole("dialog", { name: "Impressora não imprime" });
+    expect(await within(modal).findByText(/Passo 1: abra o painel/)).toBeInTheDocument();
+    expect(baseConhecimentoService.buscar).toHaveBeenCalledWith(3);
+    expect(ticketService.criar).not.toHaveBeenCalled();
+
+    fireEvent.click(within(modal).getByRole("button", { name: "Fechar" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Título")).toHaveValue("Impressora");
+  });
+
+  it("erro na sugestão é ignorado: sem aviso, sem bloco, e o chamado abre normalmente", async () => {
+    baseConhecimentoService.sugestoes.mockRejectedValue(new Error("fora do ar"));
+    renderizar();
+    await waitFor(() => expect(campoSetor()).toHaveValue("2"));
+
+    preencherObrigatorios();
+    await waitFor(() => expect(baseConhecimentoService.sugestoes).toHaveBeenCalled());
+    fireEvent.click(screen.getByRole("button", { name: "Abrir chamado" }));
+
+    await waitFor(() => expect(ticketService.criar).toHaveBeenCalled());
+    expect(navigate).toHaveBeenCalledWith("/tickets/99");
+    expect(notificar).not.toHaveBeenCalledWith(expect.anything(), "erro");
+    expect(screen.queryByRole("region", { name: "Isso pode resolver seu problema" })).not.toBeInTheDocument();
+  });
+
+  it("a sugestão pendente não segura o envio do chamado", async () => {
+    // Promessa que nunca resolve: a busca fica "pendurada" para sempre.
+    baseConhecimentoService.sugestoes.mockReturnValue(new Promise(() => {}));
+    renderizar();
+    await waitFor(() => expect(campoSetor()).toHaveValue("2"));
+
+    preencherObrigatorios();
+    await waitFor(() => expect(baseConhecimentoService.sugestoes).toHaveBeenCalled());
+    fireEvent.click(screen.getByRole("button", { name: "Abrir chamado" }));
+
+    await waitFor(() => expect(ticketService.criar).toHaveBeenCalled());
+  });
+
+  it("texto curto demais não dispara busca", async () => {
+    renderizar();
+    fireEvent.change(screen.getByLabelText("Título"), { target: { value: "ab" } });
+
+    await new Promise((r) => setTimeout(r, 500));
+    expect(baseConhecimentoService.sugestoes).not.toHaveBeenCalled();
+  });
 });
 
 describe("NovoTicket: setor", () => {

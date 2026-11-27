@@ -7,6 +7,8 @@ const router = Router();
 router.use(authMiddleware);
 
 router.get("/", artigos.listar);
+// Antes de "/:id", senão "sugestoes" seria lido como um id.
+router.get("/sugestoes", artigos.sugestoes);
 router.get("/:id", artigos.buscar);
 router.post("/", requirePermissao("base.gerenciar"), artigos.criar);
 router.put("/:id", requirePermissao("base.gerenciar"), artigos.atualizar);

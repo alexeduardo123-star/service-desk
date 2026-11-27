@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import baseConhecimentoService from "../services/baseConhecimentoService";
+import { useDebounce } from "../hooks/useDebounce";
 import categoriaService from "../services/categoriaService";
 import Botao from "../components/Botao";
 import InputField from "../components/InputField";
@@ -13,22 +14,40 @@ export default function BaseConhecimento() {
   const [categorias, setCategorias] = useState([]);
   const [form, setForm] = useState(null);
   const [carregando, setCarregando] = useState(true);
+  const [busca, setBusca] = useState("");
+  const [categoriaFiltro, setCategoriaFiltro] = useState("");
   const { usuario } = useAuth();
   const { notificar } = useNotification();
   const podeEscrever = temPermissao(usuario, "base.gerenciar");
+  const buscaAtrasada = useDebounce(busca.trim(), 300);
+  const filtrando = Boolean(buscaAtrasada || categoriaFiltro);
+  // Numera as buscas: se a pessoa digita rápido, uma resposta antiga que chegue
+  // depois não sobrescreve a lista da busca mais nova.
+  const ultimaBusca = useRef(0);
 
   async function carregar() {
+    const numero = ++ultimaBusca.current;
     setCarregando(true);
-    setArtigos(await baseConhecimentoService.listar());
-    setCarregando(false);
+    try {
+      const lista = await baseConhecimentoService.listar({ q: buscaAtrasada, categoriaId: categoriaFiltro });
+      if (numero === ultimaBusca.current) setArtigos(lista);
+    } catch {
+      if (numero === ultimaBusca.current) notificar("Erro ao carregar os artigos", "erro");
+    } finally {
+      if (numero === ultimaBusca.current) setCarregando(false);
+    }
   }
+
+  useEffect(() => {
+    categoriaService.listar().then(setCategorias);
+  }, []);
 
   useEffect(() => {
     // Agendada como microtask para não disparar setState de forma síncrona
     // dentro do corpo do efeito (react-hooks/set-state-in-effect).
     Promise.resolve().then(carregar);
-    categoriaService.listar().then(setCategorias);
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [buscaAtrasada, categoriaFiltro]);
 
   async function salvar(e) {
     e.preventDefault();
@@ -94,6 +113,33 @@ export default function BaseConhecimento() {
         </form>
       )}
 
+      <div role="search" className="mb-4 flex flex-col gap-3 sm:flex-row">
+        <label className="flex flex-1 flex-col gap-1 text-sm text-gray-700">
+          <span className="font-medium">Buscar</span>
+          <input
+            type="search"
+            className="rounded-md border border-gray-300 px-3 py-2 text-sm"
+            placeholder="Título ou conteúdo do artigo"
+            maxLength={100}
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm text-gray-700 sm:w-56">
+          <span className="font-medium">Filtrar por categoria</span>
+          <select
+            className="rounded-md border border-gray-300 px-3 py-2 text-sm"
+            value={categoriaFiltro}
+            onChange={(e) => setCategoriaFiltro(e.target.value)}
+          >
+            <option value="">Todas</option>
+            {categorias.map((c) => (
+              <option key={c.id} value={c.id}>{c.nome}</option>
+            ))}
+          </select>
+        </label>
+      </div>
+
       {carregando ? (
         <p className="text-sm text-gray-500">Carregando…</p>
       ) : (
@@ -115,7 +161,9 @@ export default function BaseConhecimento() {
               </p>
             </article>
           ))}
-          {artigos.length === 0 && <p className="text-sm text-gray-400">Nenhum artigo publicado ainda.</p>}
+          {artigos.length === 0 && (
+            <p className="text-sm text-gray-400">{filtrando ? "Nenhum artigo encontrado." : "Nenhum artigo publicado ainda."}</p>
+          )}
         </div>
       )}
     </div>

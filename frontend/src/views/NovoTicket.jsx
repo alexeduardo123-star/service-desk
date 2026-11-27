@@ -12,6 +12,7 @@ import Botao from "../components/Botao";
 import { useNotification } from "../store/useNotification";
 import { setorInicial } from "../utils/setor";
 import FormularioPreenchimento from "../components/FormularioPreenchimento";
+import SugestoesArtigos from "../components/SugestoesArtigos";
 import { opcoesAssunto, prioridadeDoAssunto } from "../utils/assunto";
 import { respostasIniciais, validarRespostas } from "../utils/respostasFormulario";
 
@@ -57,6 +58,9 @@ export default function NovoTicket() {
 
   // Com assunto escolhido, a prioridade vem dele e o campo fica travado.
   const prioridadeDefinidaPeloAssunto = Boolean(prioridadeDoAssunto(assuntos, assuntoId));
+  // O assunto não tem categoria; o serviço e o nome dele entram no texto da sugestão.
+  const assuntoEscolhido = assuntos.find((a) => String(a.id) === String(assuntoId));
+  const textoDoAssunto = assuntoEscolhido ? `${assuntoEscolhido.servico?.nome ?? ""} ${assuntoEscolhido.nome}` : "";
 
   function escolherAssunto(id) {
     setAssuntoId(id);
@@ -126,6 +130,8 @@ export default function NovoTicket() {
             required
           />
         </label>
+
+        <SugestoesArtigos textoDigitado={`${titulo} ${descricao}`} textoExtra={textoDoAssunto} categoriaId={categoriaId} />
 
         {assuntos.length > 0 && (
           <label className="flex flex-col gap-1 text-sm text-gray-700">
