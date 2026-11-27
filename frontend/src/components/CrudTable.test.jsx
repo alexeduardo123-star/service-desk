@@ -127,4 +127,65 @@ describe("CrudTable", () => {
       expect(service.criar).toHaveBeenCalledWith({ nome: "Suporte", ativo: false });
     });
   });
+
+  describe("validação no front", () => {
+    const camposForn = [
+      { name: "nome", label: "Nome", required: true },
+      { name: "telefone", label: "Telefone", formatar: (v) => v.replace(/\D/g, "").slice(0, 4) },
+    ];
+    const validar = (dados) => (dados.nome.trim() ? {} : { nome: "Informe o nome" });
+
+    function renderizarForn(service) {
+      return render(
+        <CrudTable
+          titulo="Fornecedores"
+          campos={camposForn}
+          colunas={[{ key: "nome", label: "Nome" }]}
+          service={service}
+          validar={validar}
+        />
+      );
+    }
+
+    it("mostra a mensagem embaixo do campo e não envia ao serviço", async () => {
+      const service = { listar: vi.fn().mockResolvedValue([]), criar: vi.fn() };
+      renderizarForn(service);
+
+      await screen.findByText("Nenhum registro encontrado.");
+      fireEvent.click(screen.getByRole("button", { name: "Novo" }));
+      fireEvent.click(screen.getByRole("button", { name: "Criar" }));
+
+      expect(await screen.findByText("Informe o nome")).toBeInTheDocument();
+      expect(service.criar).not.toHaveBeenCalled();
+    });
+
+    it("a mensagem some quando a pessoa volta a digitar no campo", async () => {
+      const service = { listar: vi.fn().mockResolvedValue([]), criar: vi.fn() };
+      renderizarForn(service);
+
+      await screen.findByText("Nenhum registro encontrado.");
+      fireEvent.click(screen.getByRole("button", { name: "Novo" }));
+      fireEvent.click(screen.getByRole("button", { name: "Criar" }));
+      await screen.findByText("Informe o nome");
+
+      fireEvent.change(screen.getByLabelText("Nome"), { target: { value: "Acme" } });
+
+      expect(screen.queryByText("Informe o nome")).not.toBeInTheDocument();
+    });
+
+    it("aplica a máscara do campo ao digitar e envia o valor formatado", async () => {
+      const service = { listar: vi.fn().mockResolvedValue([]), criar: vi.fn().mockResolvedValue({}) };
+      renderizarForn(service);
+
+      await screen.findByText("Nenhum registro encontrado.");
+      fireEvent.click(screen.getByRole("button", { name: "Novo" }));
+      fireEvent.change(screen.getByLabelText("Nome"), { target: { value: "Acme" } });
+      fireEvent.change(screen.getByLabelText("Telefone"), { target: { value: "12ab34567" } });
+
+      expect(screen.getByLabelText("Telefone")).toHaveValue("1234");
+
+      fireEvent.click(screen.getByRole("button", { name: "Criar" }));
+      await waitFor(() => expect(service.criar).toHaveBeenCalledWith({ nome: "Acme", telefone: "1234" }));
+    });
+  });
 });

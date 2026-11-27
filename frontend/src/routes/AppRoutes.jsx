@@ -17,6 +17,7 @@ import Categorias from "../views/Categorias";
 import Prioridades from "../views/Prioridades";
 import Equipamentos from "../views/Equipamentos";
 import Contratos from "../views/Contratos";
+import Fornecedores from "../views/Fornecedores";
 import Servicos from "../views/Servicos";
 import Assuntos from "../views/Assuntos";
 import Formularios from "../views/Formularios";
@@ -70,6 +71,14 @@ export default function AppRoutes() {
           element={
             <RotaPrivada permissao="equipamentos.gerenciar">
               <Equipamentos />
+            </RotaPrivada>
+          }
+        />
+        <Route
+          path="/admin/fornecedores"
+          element={
+            <RotaPrivada permissao="fornecedores.ver">
+              <Fornecedores />
             </RotaPrivada>
           }
         />

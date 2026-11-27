@@ -60,6 +60,9 @@ export default function AppLayout() {
           {podeVer("equipamentos.gerenciar") && (
             <NavLink to="/admin/equipamentos" className={linkClasse}>Equipamentos</NavLink>
           )}
+          {podeVer("fornecedores.ver") && (
+            <NavLink to="/admin/fornecedores" className={linkClasse}>Fornecedores</NavLink>
+          )}
           {podeVer("contratos.ver") && <NavLink to="/admin/contratos" className={linkClasse}>Contratos</NavLink>}
           {mostraCadastros && (
             <>

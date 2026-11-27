@@ -73,6 +73,7 @@ describe("fornecedores.controller", () => {
   it("cria um fornecedor e responde com status 201", async () => {
     const dados = { nome: "Acme" };
     const fornecedor = { id: 1, ...dados };
+    prisma.fornecedor.findUnique.mockResolvedValue(null);
     prisma.fornecedor.create.mockResolvedValue(fornecedor);
 
     const res = mockRes();
@@ -86,6 +87,7 @@ describe("fornecedores.controller", () => {
   it("atualiza um fornecedor pelo ID", async () => {
     const dados = { nome: "Acme Atualizada" };
     const fornecedor = { id: 1, ...dados };
+    prisma.fornecedor.findUnique.mockResolvedValue(null);
     prisma.fornecedor.update.mockResolvedValue(fornecedor);
 
     const res = mockRes();
@@ -109,5 +111,44 @@ describe("fornecedores.controller", () => {
     });
     expect(res.status).toHaveBeenCalledWith(204);
     expect(res.send).toHaveBeenCalled();
+  });
+
+  describe("CNPJ repetido", () => {
+    it("não cria quando outro fornecedor já usa o CNPJ e diz qual", async () => {
+      prisma.fornecedor.findUnique.mockResolvedValue({ id: 5, nome: "Acme" });
+
+      const res = mockRes();
+      await criar({ body: { nome: "Outra", cnpj: "11222333000181" } }, res, throwingNext);
+
+      expect(prisma.fornecedor.findUnique).toHaveBeenCalledWith({
+        where: { cnpj: "11222333000181" },
+        select: { id: true, nome: true },
+      });
+      expect(res.status).toHaveBeenCalledWith(409);
+      expect(res.json).toHaveBeenCalledWith({ erro: "Já existe um fornecedor com este CNPJ: Acme" });
+      expect(prisma.fornecedor.create).not.toHaveBeenCalled();
+    });
+
+    it("ao editar, o próprio fornecedor com o mesmo CNPJ não conta como repetido", async () => {
+      prisma.fornecedor.findUnique.mockResolvedValue({ id: 1, nome: "Acme" });
+      prisma.fornecedor.update.mockResolvedValue({ id: 1 });
+
+      const res = mockRes();
+      await atualizar({ params: { id: "1" }, body: { nome: "Acme 2", cnpj: "11222333000181" } }, res, throwingNext);
+
+      expect(prisma.fornecedor.update).toHaveBeenCalled();
+      expect(res.status).not.toHaveBeenCalledWith(409);
+    });
+
+    it("ao editar, recusa o CNPJ de outro fornecedor", async () => {
+      prisma.fornecedor.findUnique.mockResolvedValue({ id: 2, nome: "Beta" });
+
+      const res = mockRes();
+      await atualizar({ params: { id: "1" }, body: { nome: "Acme", cnpj: "11222333000181" } }, res, throwingNext);
+
+      expect(res.status).toHaveBeenCalledWith(409);
+      expect(res.json).toHaveBeenCalledWith({ erro: "Já existe um fornecedor com este CNPJ: Beta" });
+      expect(prisma.fornecedor.update).not.toHaveBeenCalled();
+    });
   });
 });

@@ -15,11 +15,15 @@ export default function CrudTable({
   service,
   podeEscrever = true,
   podeExcluir = true,
+  // Validação opcional no front: recebe o formulário e devolve { campo: mensagem }.
+  // Com ela, as mensagens aparecem embaixo de cada campo em vez do aviso do navegador.
+  validar,
 }) {
   const [registros, setRegistros] = useState([]);
   const [carregando, setCarregando] = useState(true);
   const [form, setForm] = useState(null);
   const [editandoId, setEditandoId] = useState(null);
+  const [erros, setErros] = useState({});
   const { notificar } = useNotification();
 
   async function carregar() {
@@ -42,11 +46,13 @@ export default function CrudTable({
 
   function abrirNovo() {
     setEditandoId(null);
+    setErros({});
     setForm(vazio(campos));
   }
 
   function abrirEdicao(registro) {
     setEditandoId(registro.id);
+    setErros({});
     setForm(
       Object.fromEntries(
         campos.map((campo) => {
@@ -60,7 +66,7 @@ export default function CrudTable({
             valor = String(valor).slice(0, 10);
           }
 
-          return [campo.name, valor];
+          return [campo.name, campo.formatar ? campo.formatar(valor) : valor];
         })
       )
     );
@@ -83,6 +89,15 @@ export default function CrudTable({
 
   async function salvar(evento) {
     evento.preventDefault();
+
+    if (validar) {
+      const encontrados = validar(form);
+      if (Object.keys(encontrados).length > 0) {
+        setErros(encontrados);
+        notificar("Corrija os campos destacados", "erro");
+        return;
+      }
+    }
 
     try {
       const dados = normalizar(form);
@@ -129,6 +144,7 @@ export default function CrudTable({
       {form && (
         <form
           onSubmit={salvar}
+          noValidate={Boolean(validar)}
           className="mb-6 grid gap-3 rounded-lg border border-gray-200 bg-white p-4 sm:grid-cols-2"
         >
           {campos.map((campo) => (
@@ -173,12 +189,15 @@ export default function CrudTable({
                   type={campo.type || "text"}
                   required={campo.required}
                   value={form[campo.name]}
-                  onChange={(evento) =>
-                    setForm({
-                      ...form,
-                      [campo.name]: evento.target.value,
-                    })
-                  }
+                  error={erros[campo.name]}
+                  placeholder={campo.placeholder}
+                  maxLength={campo.maxLength}
+                  inputMode={campo.inputMode}
+                  onChange={(evento) => {
+                    const valor = campo.formatar ? campo.formatar(evento.target.value) : evento.target.value;
+                    setForm({ ...form, [campo.name]: valor });
+                    if (erros[campo.name]) setErros({ ...erros, [campo.name]: undefined });
+                  }}
                 />
               )}
             </div>
