@@ -12,4 +12,6 @@ export default {
   aprovar: async (id) => (await api.patch(`/tickets/${id}/aprovar`)).data,
   rejeitar: async (id, motivo) => (await api.patch(`/tickets/${id}/rejeitar`, { motivo })).data,
   atribuir: async (id, tecnicoId) => (await api.patch(`/tickets/${id}/atribuir`, { tecnicoId })).data,
+  encaminhar: async (id, tecnicoId, motivo) =>
+    (await api.patch(`/tickets/${id}/encaminhar`, { tecnicoId, motivo })).data,
 };

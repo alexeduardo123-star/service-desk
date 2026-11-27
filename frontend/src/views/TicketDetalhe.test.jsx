@@ -22,11 +22,19 @@ vi.mock("../services/ticketService", () => ({
     retomar: vi.fn(),
     aprovar: vi.fn(),
     rejeitar: vi.fn(),
+    encaminhar: vi.fn(),
   },
 }));
 
 vi.mock("../services/usuarioService", () => ({
-  default: { listar: vi.fn().mockResolvedValue([]) },
+  default: {
+    listar: vi.fn().mockResolvedValue([]),
+    atendentes: vi.fn().mockResolvedValue([
+      { id: 20, nome: "Téc", papel: "TECNICO" },
+      { id: 21, nome: "Bruno", papel: "TECNICO" },
+      { id: 1, nome: "Admin", papel: "ADMIN" },
+    ]),
+  },
 }));
 
 vi.mock("../services/comentarioService", () => ({
@@ -130,6 +138,101 @@ describe("TicketDetalhe: suspender", () => {
 
     await screen.findByRole("combobox");
     expect(screen.queryByRole("button", { name: "Suspender" })).not.toBeInTheDocument();
+  });
+});
+
+describe("TicketDetalhe: encaminhar", () => {
+  async function abrirModal() {
+    fireEvent.click(await screen.findByRole("button", { name: "Encaminhar" }));
+    return screen.getByRole("dialog", { name: "Encaminhar chamado" });
+  }
+
+  it("lista os atendentes sem o atual", async () => {
+    ticketService.buscar.mockResolvedValue(chamado());
+    renderizar();
+
+    const modal = await abrirModal();
+    const select = within(modal).getByRole("combobox", { name: "Encaminhar para" });
+    await waitFor(() => expect(within(select).getAllByRole("option")).toHaveLength(3));
+    const opcoes = within(select).getAllByRole("option").map((o) => o.textContent);
+    expect(opcoes).toEqual(["Selecione o atendente", "Bruno", "Admin"]);
+  });
+
+  it("só libera o envio com atendente escolhido e motivo de pelo menos 5 caracteres", async () => {
+    ticketService.buscar.mockResolvedValue(chamado());
+    renderizar();
+
+    const modal = await abrirModal();
+    const enviar = within(modal).getByRole("button", { name: "Encaminhar" });
+    expect(enviar).toBeDisabled();
+
+    await waitFor(() => within(modal).getByRole("option", { name: "Bruno" }));
+    fireEvent.change(within(modal).getByRole("combobox"), { target: { value: "21" } });
+    expect(enviar).toBeDisabled();
+
+    fireEvent.change(within(modal).getByLabelText("Motivo"), { target: { value: "  abc  " } });
+    expect(enviar).toBeDisabled();
+    expect(within(modal).getByText(/pelo menos 5 caracteres/)).toBeInTheDocument();
+
+    fireEvent.change(within(modal).getByLabelText("Motivo"), { target: { value: "abcde" } });
+    expect(enviar).toBeEnabled();
+  });
+
+  it("encaminha, avisa e recarrega o chamado", async () => {
+    ticketService.buscar.mockResolvedValue(chamado());
+    ticketService.encaminhar.mockResolvedValue(chamado({ tecnico: { id: 21, nome: "Bruno" } }));
+    renderizar();
+
+    const modal = await abrirModal();
+    await waitFor(() => within(modal).getByRole("option", { name: "Bruno" }));
+    fireEvent.change(within(modal).getByRole("combobox"), { target: { value: "21" } });
+    fireEvent.change(within(modal).getByLabelText("Motivo"), { target: { value: " especialista em rede " } });
+    fireEvent.click(within(modal).getByRole("button", { name: "Encaminhar" }));
+
+    await waitFor(() => expect(ticketService.encaminhar).toHaveBeenCalledWith("7", 21, "especialista em rede"));
+    expect(notificar).toHaveBeenCalledWith("Chamado encaminhado");
+    await waitFor(() => expect(ticketService.buscar).toHaveBeenCalledTimes(2));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("mostra o erro da API e mantém o modal aberto", async () => {
+    ticketService.buscar.mockResolvedValue(chamado());
+    ticketService.encaminhar.mockRejectedValue({ response: { data: { erro: "O chamado já está com este atendente" } } });
+    renderizar();
+
+    const modal = await abrirModal();
+    await waitFor(() => within(modal).getByRole("option", { name: "Bruno" }));
+    fireEvent.change(within(modal).getByRole("combobox"), { target: { value: "21" } });
+    fireEvent.change(within(modal).getByLabelText("Motivo"), { target: { value: "motivo qualquer" } });
+    fireEvent.click(within(modal).getByRole("button", { name: "Encaminhar" }));
+
+    await waitFor(() => expect(notificar).toHaveBeenCalledWith("O chamado já está com este atendente", "erro"));
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+  });
+
+  it("Cancelar fecha o modal sem encaminhar", async () => {
+    ticketService.buscar.mockResolvedValue(chamado());
+    renderizar();
+
+    const modal = await abrirModal();
+    fireEvent.click(within(modal).getByRole("button", { name: "Cancelar" }));
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(ticketService.encaminhar).not.toHaveBeenCalled();
+  });
+
+  it("não aparece em chamado fechado nem para quem não trata chamados", async () => {
+    ticketService.buscar.mockResolvedValue(chamado({ status: "FECHADO", closedAt: "2026-11-18T12:00:00Z" }));
+    const { unmount } = renderizar();
+    await screen.findByRole("combobox");
+    expect(screen.queryByRole("button", { name: "Encaminhar" })).not.toBeInTheDocument();
+    unmount();
+
+    usuarioLogado = SOLICITANTE;
+    ticketService.buscar.mockResolvedValue(chamado());
+    renderizar();
+    await screen.findByText("VPN não conecta");
+    expect(screen.queryByRole("button", { name: "Encaminhar" })).not.toBeInTheDocument();
   });
 });
 

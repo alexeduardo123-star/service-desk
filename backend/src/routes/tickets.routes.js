@@ -3,7 +3,13 @@ import * as tickets from "../controllers/tickets.controller.js";
 import * as comentarios from "../controllers/comentarios.controller.js";
 import { authMiddleware, requirePermissao } from "../middlewares/auth.js";
 import { validate } from "../middlewares/validate.js";
-import { alterarStatusSchema, atribuirSchema, rejeitarSchema, suspenderSchema } from "../schemas/ticket.schemas.js";
+import {
+  alterarStatusSchema,
+  atribuirSchema,
+  encaminharSchema,
+  rejeitarSchema,
+  suspenderSchema,
+} from "../schemas/ticket.schemas.js";
 
 const router = Router();
 
@@ -17,6 +23,7 @@ router.patch("/:id/status", requirePermissao("tickets.tratar"), validate(alterar
 router.patch("/:id/suspender", requirePermissao("tickets.tratar"), validate(suspenderSchema), tickets.suspender);
 router.patch("/:id/retomar", requirePermissao("tickets.tratar"), tickets.retomar);
 router.patch("/:id/atribuir", requirePermissao("tickets.tratar"), validate(atribuirSchema), tickets.atribuir);
+router.patch("/:id/encaminhar", requirePermissao("tickets.tratar"), validate(encaminharSchema), tickets.encaminhar);
 router.patch("/:id/aprovar", requirePermissao("tickets.aprovar"), tickets.aprovar);
 router.patch("/:id/rejeitar", requirePermissao("tickets.aprovar"), validate(rejeitarSchema), tickets.rejeitar);
 router.delete("/:id", requirePermissao("tickets.excluir"), tickets.excluir);

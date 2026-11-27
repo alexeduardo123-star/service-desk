@@ -15,6 +15,7 @@ vi.mock("../utils/eventosTicket.js", async (original) => ({
   // Mantém as regras puras de verdade e só espiona os avisos, que vão ao banco.
   ...(await original()),
   avisarTicketSuspenso: vi.fn(),
+  avisarTicketAtribuido: vi.fn(),
   avisarTicketRetomado: vi.fn(),
   avisarTicketCriado: vi.fn(),
   avisarAprovacaoPendente: vi.fn(),
@@ -23,7 +24,7 @@ vi.mock("../utils/eventosTicket.js", async (original) => ({
 
 const prisma = (await import("../config/prisma.js")).default;
 const eventos = await import("../utils/eventosTicket.js");
-const { criar, suspender, retomar, alterarStatus, atribuir, aprovar, rejeitar } = await import("./tickets.controller.js");
+const { criar, suspender, retomar, alterarStatus, atribuir, encaminhar, aprovar, rejeitar } = await import("./tickets.controller.js");
 
 const TECNICO = { id: 20, nome: "Téc", papel: "TECNICO" };
 const TICKET = { id: 7, titulo: "VPN", status: "EM_ANDAMENTO", solicitanteId: 10, tecnicoId: 20 };
@@ -121,6 +122,91 @@ describe("tickets.controller: retomar", () => {
     expect(res.status).toHaveBeenCalledWith(409);
     expect(prisma.ticket.update).not.toHaveBeenCalled();
     expect(eventos.avisarTicketRetomado).not.toHaveBeenCalled();
+  });
+});
+
+describe("tickets.controller: encaminhar", () => {
+  const BRUNO = { id: 21, nome: "Bruno", papel: "TECNICO", ativo: true };
+  const COM_TECNICO = { ...TICKET, tecnico: { id: 20, nome: "Téc" } };
+
+  it("troca o atendente e registra o motivo como comentário, na mesma transação", async () => {
+    prisma.ticket.findUnique.mockResolvedValue(COM_TECNICO);
+    prisma.usuario.findUnique.mockResolvedValue(BRUNO);
+    const res = mockRes();
+
+    await encaminhar(req({ tecnicoId: 21, motivo: "especialista em rede" }), res, throwingNext);
+
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+    expect(prisma.ticket.update).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: 7 }, data: { tecnicoId: 21, status: "EM_ANDAMENTO" } })
+    );
+    expect(prisma.comentario.create).toHaveBeenCalledWith({
+      data: { ticketId: 7, usuarioId: 20, mensagem: "Chamado encaminhado de Téc para Bruno. Motivo: especialista em rede" },
+    });
+    expect(eventos.avisarTicketAtribuido).toHaveBeenCalledWith(expect.objectContaining({ id: 7, tecnicoId: 21 }), TECNICO);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ tecnicoId: 21 }));
+  });
+
+  it("chamado aberto sem atendente passa para Em andamento", async () => {
+    prisma.ticket.findUnique.mockResolvedValue({ ...TICKET, status: "ABERTO", tecnicoId: null, tecnico: null });
+    prisma.usuario.findUnique.mockResolvedValue(BRUNO);
+
+    await encaminhar(req({ tecnicoId: 21, motivo: "fila da manhã" }), mockRes(), throwingNext);
+
+    expect(prisma.ticket.update.mock.calls[0][0].data).toEqual({ tecnicoId: 21, status: "EM_ANDAMENTO" });
+    expect(prisma.comentario.create.mock.calls[0][0].data.mensagem).toBe(
+      "Chamado encaminhado de sem atendente para Bruno. Motivo: fila da manhã"
+    );
+  });
+
+  it("chamado suspenso continua suspenso", async () => {
+    prisma.ticket.findUnique.mockResolvedValue({ ...COM_TECNICO, status: "SUSPENSO" });
+    prisma.usuario.findUnique.mockResolvedValue(BRUNO);
+
+    await encaminhar(req({ tecnicoId: 21, motivo: "troca de turno" }), mockRes(), throwingNext);
+
+    expect(prisma.ticket.update.mock.calls[0][0].data.status).toBe("SUSPENSO");
+  });
+
+  it("recusa com 409 quando a regra não deixa (fechado, mesmo atendente, destino inválido)", async () => {
+    const casos = [
+      [{ ...COM_TECNICO, status: "FECHADO" }, BRUNO, "Chamado fechado não pode ser encaminhado"],
+      [COM_TECNICO, { ...BRUNO, id: 20 }, "O chamado já está com este atendente"],
+      [COM_TECNICO, { ...BRUNO, papel: "SOLICITANTE" }, "O destino precisa ser um atendente ativo"],
+      [COM_TECNICO, null, "O destino precisa ser um atendente ativo"],
+    ];
+    for (const [ticket, destino, mensagem] of casos) {
+      prisma.ticket.findUnique.mockResolvedValue(ticket);
+      prisma.usuario.findUnique.mockResolvedValue(destino);
+      const res = mockRes();
+
+      await encaminhar(req({ tecnicoId: destino?.id ?? 99, motivo: "algum motivo" }), res, throwingNext);
+
+      expect(res.status).toHaveBeenCalledWith(409);
+      expect(res.json).toHaveBeenCalledWith({ erro: mensagem });
+    }
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+    expect(eventos.avisarTicketAtribuido).not.toHaveBeenCalled();
+  });
+
+  it("respeita a aprovação pendente do gestor", async () => {
+    prisma.ticket.findUnique.mockResolvedValue({ ...COM_TECNICO, aprovacaoStatus: "PENDENTE" });
+    const res = mockRes();
+
+    await encaminhar(req({ tecnicoId: 21, motivo: "algum motivo" }), res, throwingNext);
+
+    expect(res.status).toHaveBeenCalledWith(409);
+    expect(res.json).toHaveBeenCalledWith({ erro: "Chamado aguardando aprovação do gestor" });
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it("404 quando o chamado não existe", async () => {
+    prisma.ticket.findUnique.mockResolvedValue(null);
+    const res = mockRes();
+
+    await encaminhar(req({ tecnicoId: 21, motivo: "algum motivo" }), res, throwingNext);
+
+    expect(res.status).toHaveBeenCalledWith(404);
   });
 });
 

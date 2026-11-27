@@ -52,6 +52,18 @@ export const alterarSenha = asyncHandler(async (req, res) => {
   res.json({ mensagem: "Senha alterada com sucesso" });
 });
 
+// Técnicos e administradores ativos: quem pode receber chamados e agendamentos.
+// Só id/nome/papel, porque a rota é aberta a quem trata chamados e não só a
+// quem gerencia usuários.
+export const listarAtendentes = asyncHandler(async (req, res) => {
+  const atendentes = await prisma.usuario.findMany({
+    where: { papel: { in: ["ADMIN", "TECNICO"] }, ativo: true },
+    select: { id: true, nome: true, papel: true },
+    orderBy: { nome: "asc" },
+  });
+  res.json(atendentes);
+});
+
 export const listar = asyncHandler(async (req, res) => {
   const usuarios = await prisma.usuario.findMany({ select: semSenha, orderBy: { id: "asc" } });
   res.json(usuarios);

@@ -57,6 +57,29 @@ export function comentarioDeSuspensao(motivo) {
   return `Chamado suspenso. Motivo: ${motivo}`;
 }
 
+// Regras do encaminhamento para outro atendente. `destino` é o usuário que vai
+// receber o chamado (ou null, quando o id não existe). Devolvem a mensagem de
+// erro para a API, ou null quando a ação pode seguir.
+export function erroAoEncaminhar(ticket, destino) {
+  if (ticket.status === "FECHADO") return "Chamado fechado não pode ser encaminhado";
+  if (!destino || !destino.ativo || destino.papel === "SOLICITANTE") {
+    return "O destino precisa ser um atendente ativo";
+  }
+  if (ticket.tecnicoId === destino.id) return "O chamado já está com este atendente";
+  return null;
+}
+
+// Encaminhar um chamado ainda aberto já coloca alguém para cuidar dele, então
+// ele passa a andar; nos demais status o encaminhamento não mexe no status.
+export function statusAoEncaminhar(ticket) {
+  return ticket.status === "ABERTO" ? "EM_ANDAMENTO" : ticket.status;
+}
+
+// Como na suspensão, o motivo fica registrado como comentário no histórico.
+export function comentarioDeEncaminhamento(anterior, novo, motivo) {
+  return `Chamado encaminhado de ${anterior?.nome ?? "sem atendente"} para ${novo.nome}. Motivo: ${motivo}`;
+}
+
 async function executar(nome, fn) {
   try {
     await fn();

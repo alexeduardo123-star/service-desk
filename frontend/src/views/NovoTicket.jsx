@@ -159,24 +159,28 @@ export default function NovoTicket() {
           </select>
         </label>
 
-        <label className="flex flex-col gap-1 text-sm text-gray-700">
-          <span className="font-medium">Prioridade</span>
-          <select
-            className="rounded-md border border-gray-300 px-3 py-2 text-sm disabled:bg-gray-100"
-            value={prioridadeId}
-            onChange={(e) => setPrioridadeId(e.target.value)}
-            disabled={prioridadeDefinidaPeloAssunto}
-            required
-          >
-            <option value="">Selecione…</option>
-            {prioridades.map((p) => (
-              <option key={p.id} value={p.id}>{p.nome}</option>
-            ))}
-          </select>
+        <div className="flex flex-col gap-1 text-sm text-gray-700">
+          <label className="flex flex-col gap-1">
+            <span className="font-medium">Prioridade</span>
+            <select
+              className="rounded-md border border-gray-300 px-3 py-2 text-sm disabled:bg-gray-100"
+              value={prioridadeId}
+              onChange={(e) => setPrioridadeId(e.target.value)}
+              disabled={prioridadeDefinidaPeloAssunto}
+              aria-describedby={prioridadeDefinidaPeloAssunto ? "ajuda-prioridade" : undefined}
+              required
+            >
+              <option value="">Selecione…</option>
+              {prioridades.map((p) => (
+                <option key={p.id} value={p.id}>{p.nome}</option>
+              ))}
+            </select>
+          </label>
+          {/* Fora do <label> para não virar parte do nome acessível do campo. */}
           {prioridadeDefinidaPeloAssunto && (
-            <span className="text-xs text-gray-500">Definida pelo assunto escolhido.</span>
+            <span id="ajuda-prioridade" className="text-xs text-gray-500">Definida pelo assunto escolhido.</span>
           )}
-        </label>
+        </div>
 
         <label className="flex flex-col gap-1 text-sm text-gray-700">
           <span className="font-medium">Setor</span>

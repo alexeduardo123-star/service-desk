@@ -6,10 +6,13 @@ import {
   avisarRetomadaDeAtendimento,
   avisarTicketSuspenso,
   avisarTicketRetomado,
+  comentarioDeEncaminhamento,
   comentarioDeSuspensao,
   deveRetomarAtendimento,
+  erroAoEncaminhar,
   erroAoRetomar,
   erroAoSuspender,
+  statusAoEncaminhar,
 } from "./eventosTicket.js";
 
 const TICKET = { id: 7, titulo: "Notebook não liga", solicitanteId: 10, tecnicoId: 20, status: "FECHADO" };
@@ -201,5 +204,56 @@ describe("avisarTicketRetomado", () => {
     expect(data).toMatchObject({ usuarioId: 10, tipo: "TICKET_STATUS", ticketId: 7 });
     expect(data.titulo).toContain("Em andamento");
     expect(data.mensagem).toContain("Admin");
+  });
+});
+
+describe("regras de encaminhamento", () => {
+  const EM_ANDAMENTO = { ...TICKET, status: "EM_ANDAMENTO", tecnicoId: 20 };
+  const BRUNO = { id: 21, nome: "Bruno", papel: "TECNICO", ativo: true };
+
+  it("permite encaminhar para outro atendente ativo", () => {
+    expect(erroAoEncaminhar(EM_ANDAMENTO, BRUNO)).toBeNull();
+    expect(erroAoEncaminhar(EM_ANDAMENTO, { ...BRUNO, papel: "ADMIN" })).toBeNull();
+    expect(erroAoEncaminhar({ ...EM_ANDAMENTO, tecnicoId: null, status: "ABERTO" }, BRUNO)).toBeNull();
+  });
+
+  it("vale para chamados suspensos ou aguardando o usuário", () => {
+    for (const status of ["SUSPENSO", "AGUARDANDO_USUARIO"]) {
+      expect(erroAoEncaminhar({ ...EM_ANDAMENTO, status }, BRUNO)).toBeNull();
+    }
+  });
+
+  it("não encaminha chamado fechado", () => {
+    expect(erroAoEncaminhar({ ...EM_ANDAMENTO, status: "FECHADO" }, BRUNO)).toBe("Chamado fechado não pode ser encaminhado");
+  });
+
+  it("não encaminha para o atendente atual", () => {
+    expect(erroAoEncaminhar(EM_ANDAMENTO, { ...BRUNO, id: 20 })).toBe("O chamado já está com este atendente");
+  });
+
+  it("exige destino existente, ativo e que não seja solicitante", () => {
+    const esperado = "O destino precisa ser um atendente ativo";
+    expect(erroAoEncaminhar(EM_ANDAMENTO, null)).toBe(esperado);
+    expect(erroAoEncaminhar(EM_ANDAMENTO, { ...BRUNO, ativo: false })).toBe(esperado);
+    expect(erroAoEncaminhar(EM_ANDAMENTO, { ...BRUNO, papel: "SOLICITANTE" })).toBe(esperado);
+  });
+
+  it("chamado aberto passa para Em andamento; os demais mantêm o status", () => {
+    expect(statusAoEncaminhar({ status: "ABERTO" })).toBe("EM_ANDAMENTO");
+    for (const status of ["EM_ANDAMENTO", "AGUARDANDO_USUARIO", "SUSPENSO"]) {
+      expect(statusAoEncaminhar({ status })).toBe(status);
+    }
+  });
+
+  it("monta o comentário com o atendente anterior, o novo e o motivo", () => {
+    expect(comentarioDeEncaminhamento({ nome: "Téc" }, BRUNO, "especialista em rede")).toBe(
+      "Chamado encaminhado de Téc para Bruno. Motivo: especialista em rede"
+    );
+  });
+
+  it("sem atendente anterior, o comentário diz que não havia atendente", () => {
+    expect(comentarioDeEncaminhamento(null, BRUNO, "fila da manhã")).toBe(
+      "Chamado encaminhado de sem atendente para Bruno. Motivo: fila da manhã"
+    );
   });
 });

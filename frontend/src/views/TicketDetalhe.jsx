@@ -6,6 +6,7 @@ import usuarioService from "../services/usuarioService";
 import StatusBadge from "../components/StatusBadge";
 import AprovacaoBadge from "../components/AprovacaoBadge";
 import Botao from "../components/Botao";
+import EncaminharModal from "../components/EncaminharModal";
 import { useAuth } from "../auth/useAuth";
 import { PapelUsuario } from "../enum/PapelUsuario";
 import { temPermissao } from "../utils/permissoes";
@@ -28,6 +29,8 @@ export default function TicketDetalhe() {
   const [enviando, setEnviando] = useState(false);
   const [rejeitando, setRejeitando] = useState(false);
   const [motivoRejeicao, setMotivoRejeicao] = useState("");
+  const [atendentes, setAtendentes] = useState([]);
+  const [encaminhando, setEncaminhando] = useState(false);
   const podeGerenciar = temPermissao(usuario, "tickets.tratar");
 
   async function carregar() {
@@ -40,6 +43,9 @@ export default function TicketDetalhe() {
     Promise.resolve().then(carregar);
     if (usuario.papel === PapelUsuario.ADMIN) {
       usuarioService.listar().then((lista) => setTecnicos(lista.filter((u) => u.papel === PapelUsuario.TECNICO)));
+    }
+    if (podeGerenciar) {
+      usuarioService.atendentes().then(setAtendentes).catch(() => {});
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
@@ -119,6 +125,20 @@ export default function TicketDetalhe() {
   function cancelarSuspensao() {
     setSuspendendo(false);
     setMotivo("");
+  }
+
+  async function encaminhar(tecnicoId, motivoEncaminhamento) {
+    setEnviando(true);
+    try {
+      await ticketService.encaminhar(id, tecnicoId, motivoEncaminhamento);
+      notificar("Chamado encaminhado");
+      setEncaminhando(false);
+      carregar();
+    } catch (err) {
+      notificar(err.response?.data?.erro || "Não foi possível encaminhar o chamado", "erro");
+    } finally {
+      setEnviando(false);
+    }
   }
 
   async function atribuir(tecnicoId) {
@@ -240,6 +260,10 @@ export default function TicketDetalhe() {
             <Botao variante="secundario" onClick={() => setSuspendendo(true)}>Suspender</Botao>
           )}
 
+          {ticket.status !== "FECHADO" && (
+            <Botao variante="secundario" onClick={() => setEncaminhando(true)} disabled={enviando}>Encaminhar</Botao>
+          )}
+
           {usuario.papel === PapelUsuario.TECNICO && !ticket.tecnico && (
             <Botao onClick={() => atribuir(usuario.id)}>Atribuir a mim</Botao>
           )}
@@ -283,6 +307,15 @@ export default function TicketDetalhe() {
             </form>
           )}
         </div>
+      )}
+
+      {encaminhando && (
+        <EncaminharModal
+          atendentes={atendentes.filter((a) => a.id !== ticket.tecnico?.id)}
+          enviando={enviando}
+          onConfirmar={encaminhar}
+          onCancelar={() => setEncaminhando(false)}
+        />
       )}
 
       <h2 className="mb-2 text-lg font-semibold text-gray-900">Comentários</h2>

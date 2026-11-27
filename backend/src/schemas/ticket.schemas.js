@@ -25,3 +25,16 @@ export const rejeitarSchema = z.object({
 export const atribuirSchema = z.object({
   tecnicoId: z.number({ message: "tecnicoId é obrigatório" }).int().positive("tecnicoId inválido"),
 });
+
+export const encaminharSchema = z.object({
+  tecnicoId: z
+    .number({ message: "Informe o atendente de destino" })
+    .int("Atendente de destino inválido")
+    .positive("Atendente de destino inválido"),
+  motivo: z
+    .string({ message: "Informe o motivo do encaminhamento" })
+    .trim()
+    .min(1, "Informe o motivo do encaminhamento")
+    .min(5, "O motivo deve ter pelo menos 5 caracteres")
+    .max(500, "O motivo deve ter no máximo 500 caracteres"),
+});

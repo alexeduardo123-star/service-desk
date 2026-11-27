@@ -9,9 +9,12 @@ import {
   avisarTicketRetomado,
   avisarAprovacaoPendente,
   avisarAprovacaoDecidida,
+  comentarioDeEncaminhamento,
   comentarioDeSuspensao,
+  erroAoEncaminhar,
   erroAoRetomar,
   erroAoSuspender,
+  statusAoEncaminhar,
 } from "../utils/eventosTicket.js";
 import { validarRespostas } from "../utils/respostasFormulario.js";
 import {
@@ -186,6 +189,43 @@ export const atribuir = asyncHandler(async (req, res) => {
     data: { tecnicoId, status: "EM_ANDAMENTO" },
     include,
   });
+  avisarTicketAtribuido(ticket, req.user);
+  res.json(ticket);
+});
+
+// Passa o chamado para outro atendente. O motivo é obrigatório (validado em
+// encaminharSchema) e fica no histórico; troca e comentário mudam juntos.
+export const encaminhar = asyncHandler(async (req, res) => {
+  const { tecnicoId, motivo } = req.body;
+  const atual = await prisma.ticket.findUnique({
+    where: { id: Number(req.params.id) },
+    include: { tecnico: { select: { id: true, nome: true } } },
+  });
+  if (!atual) return res.status(404).json({ erro: "Não encontrado" });
+  const bloqueio = erroDeAprovacao(atual);
+  if (bloqueio) return res.status(409).json({ erro: bloqueio });
+
+  const destino = await prisma.usuario.findUnique({
+    where: { id: tecnicoId },
+    select: { id: true, nome: true, papel: true, ativo: true },
+  });
+  const erro = erroAoEncaminhar(atual, destino);
+  if (erro) return res.status(409).json({ erro });
+
+  const [ticket] = await prisma.$transaction([
+    prisma.ticket.update({
+      where: { id: atual.id },
+      data: { tecnicoId: destino.id, status: statusAoEncaminhar(atual) },
+      include,
+    }),
+    prisma.comentario.create({
+      data: {
+        ticketId: atual.id,
+        usuarioId: req.user.id,
+        mensagem: comentarioDeEncaminhamento(atual.tecnico, destino, motivo),
+      },
+    }),
+  ]);
   avisarTicketAtribuido(ticket, req.user);
   res.json(ticket);
 });
