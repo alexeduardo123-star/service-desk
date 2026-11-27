@@ -23,6 +23,8 @@ vi.mock("../services/ticketService", () => ({
     aprovar: vi.fn(),
     rejeitar: vi.fn(),
     encaminhar: vi.fn(),
+    adicionarColaborador: vi.fn(),
+    removerColaborador: vi.fn(),
   },
 }));
 
@@ -85,7 +87,7 @@ describe("TicketDetalhe: suspender", () => {
     ticketService.buscar.mockResolvedValue(chamado());
     renderizar();
 
-    const select = await screen.findByRole("combobox");
+    const select = await screen.findByRole("combobox", { name: /^Status/ });
     const opcoes = within(select).getAllByRole("option").map((o) => o.textContent);
     expect(opcoes).not.toContain("Suspenso");
   });
@@ -136,7 +138,7 @@ describe("TicketDetalhe: suspender", () => {
     ticketService.buscar.mockResolvedValue(chamado({ status: "FECHADO", closedAt: "2026-11-18T12:00:00Z" }));
     renderizar();
 
-    await screen.findByRole("combobox");
+    await screen.findByRole("combobox", { name: /^Status/ });
     expect(screen.queryByRole("button", { name: "Suspender" })).not.toBeInTheDocument();
   });
 });
@@ -224,7 +226,7 @@ describe("TicketDetalhe: encaminhar", () => {
   it("não aparece em chamado fechado nem para quem não trata chamados", async () => {
     ticketService.buscar.mockResolvedValue(chamado({ status: "FECHADO", closedAt: "2026-11-18T12:00:00Z" }));
     const { unmount } = renderizar();
-    await screen.findByRole("combobox");
+    await screen.findByRole("combobox", { name: /^Status/ });
     expect(screen.queryByRole("button", { name: "Encaminhar" })).not.toBeInTheDocument();
     unmount();
 
@@ -236,6 +238,105 @@ describe("TicketDetalhe: encaminhar", () => {
   });
 });
 
+describe("TicketDetalhe: colaboradores", () => {
+  const secao = () => screen.findByRole("region", { name: "Colaboradores" });
+
+  it("lista os colaboradores e só oferece quem ainda pode entrar", async () => {
+    ticketService.buscar.mockResolvedValue(chamado({ colaboradores: [{ id: 1, nome: "Admin" }] }));
+    renderizar();
+
+    const regiao = await secao();
+    expect(within(regiao).getByText("Admin")).toBeInTheDocument();
+    const select = within(regiao).getByRole("combobox", { name: "Adicionar colaborador" });
+    // Téc é o responsável e Admin já colabora: sobra só o Bruno.
+    await waitFor(() => expect(within(select).getAllByRole("option").map((o) => o.textContent)).toEqual(["Selecione…", "Bruno"]));
+  });
+
+  it("adiciona o colaborador escolhido, avisa e recarrega", async () => {
+    ticketService.buscar.mockResolvedValue(chamado({ colaboradores: [] }));
+    ticketService.adicionarColaborador.mockResolvedValue([{ id: 21, nome: "Bruno" }]);
+    renderizar();
+
+    const regiao = await secao();
+    expect(within(regiao).getByText("Nenhum colaborador neste chamado.")).toBeInTheDocument();
+    const adicionar = within(regiao).getByRole("button", { name: "Adicionar" });
+    expect(adicionar).toBeDisabled();
+
+    await waitFor(() => within(regiao).getByRole("option", { name: "Bruno" }));
+    fireEvent.change(within(regiao).getByRole("combobox"), { target: { value: "21" } });
+    fireEvent.click(adicionar);
+
+    await waitFor(() => expect(ticketService.adicionarColaborador).toHaveBeenCalledWith("7", 21));
+    expect(notificar).toHaveBeenCalledWith("Colaborador adicionado");
+    await waitFor(() => expect(ticketService.buscar).toHaveBeenCalledTimes(2));
+  });
+
+  it("mostra o erro da API ao adicionar", async () => {
+    ticketService.buscar.mockResolvedValue(chamado({ colaboradores: [] }));
+    ticketService.adicionarColaborador.mockRejectedValue({ response: { data: { erro: "Este usuário já é colaborador do chamado" } } });
+    renderizar();
+
+    const regiao = await secao();
+    await waitFor(() => within(regiao).getByRole("option", { name: "Bruno" }));
+    fireEvent.change(within(regiao).getByRole("combobox"), { target: { value: "21" } });
+    fireEvent.click(within(regiao).getByRole("button", { name: "Adicionar" }));
+
+    await waitFor(() => expect(notificar).toHaveBeenCalledWith("Este usuário já é colaborador do chamado", "erro"));
+  });
+
+  it("remove o colaborador, avisa e recarrega", async () => {
+    ticketService.buscar.mockResolvedValue(chamado({ colaboradores: [{ id: 21, nome: "Bruno" }] }));
+    ticketService.removerColaborador.mockResolvedValue([]);
+    renderizar();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Remover Bruno dos colaboradores" }));
+
+    await waitFor(() => expect(ticketService.removerColaborador).toHaveBeenCalledWith("7", 21));
+    expect(notificar).toHaveBeenCalledWith("Colaborador removido");
+    await waitFor(() => expect(ticketService.buscar).toHaveBeenCalledTimes(2));
+  });
+
+  it("mostra o erro da API ao remover", async () => {
+    ticketService.buscar.mockResolvedValue(chamado({ colaboradores: [{ id: 21, nome: "Bruno" }] }));
+    ticketService.removerColaborador.mockRejectedValue({ response: { data: { erro: "Chamado fechado não aceita mudanças nos colaboradores" } } });
+    renderizar();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Remover Bruno dos colaboradores" }));
+
+    await waitFor(() =>
+      expect(notificar).toHaveBeenCalledWith("Chamado fechado não aceita mudanças nos colaboradores", "erro")
+    );
+  });
+
+  it("chamado fechado só mostra a lista, sem adicionar nem remover", async () => {
+    ticketService.buscar.mockResolvedValue(
+      chamado({ status: "FECHADO", closedAt: "2026-11-18T12:00:00Z", colaboradores: [{ id: 21, nome: "Bruno" }] })
+    );
+    renderizar();
+
+    const regiao = await secao();
+    expect(within(regiao).getByText("Bruno")).toBeInTheDocument();
+    expect(within(regiao).queryByRole("button")).not.toBeInTheDocument();
+    expect(within(regiao).queryByRole("combobox")).not.toBeInTheDocument();
+  });
+
+  it("quem não trata chamados vê a lista sem ações, e nada quando não há colaboradores", async () => {
+    usuarioLogado = SOLICITANTE;
+    ticketService.buscar.mockResolvedValue(chamado({ colaboradores: [{ id: 21, nome: "Bruno" }] }));
+    const { unmount } = renderizar();
+
+    const regiao = await secao();
+    expect(within(regiao).getByText("Bruno")).toBeInTheDocument();
+    expect(within(regiao).queryByRole("button")).not.toBeInTheDocument();
+    unmount();
+
+    ticketService.buscar.mockResolvedValue(chamado({ colaboradores: [] }));
+    renderizar();
+    await screen.findByText("VPN não conecta");
+    expect(screen.queryByRole("region", { name: "Colaboradores" })).not.toBeInTheDocument();
+  });
+});
+
 describe("TicketDetalhe: retomar", () => {
   it("chamado suspenso mostra Retomar no lugar do seletor e volta para Em andamento", async () => {
     ticketService.buscar.mockResolvedValue(chamado({ status: "SUSPENSO" }));
@@ -243,7 +344,7 @@ describe("TicketDetalhe: retomar", () => {
     renderizar();
 
     const retomar = await screen.findByRole("button", { name: "Retomar" });
-    expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
+    expect(screen.queryByRole("combobox", { name: /^Status/ })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Suspender" })).not.toBeInTheDocument();
 
     fireEvent.click(retomar);

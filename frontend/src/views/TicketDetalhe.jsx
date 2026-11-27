@@ -31,6 +31,7 @@ export default function TicketDetalhe() {
   const [motivoRejeicao, setMotivoRejeicao] = useState("");
   const [atendentes, setAtendentes] = useState([]);
   const [encaminhando, setEncaminhando] = useState(false);
+  const [novoColaboradorId, setNovoColaboradorId] = useState("");
   const podeGerenciar = temPermissao(usuario, "tickets.tratar");
 
   async function carregar() {
@@ -141,6 +142,35 @@ export default function TicketDetalhe() {
     }
   }
 
+  async function adicionarColaborador(e) {
+    e.preventDefault();
+    if (!novoColaboradorId) return;
+    setEnviando(true);
+    try {
+      await ticketService.adicionarColaborador(id, Number(novoColaboradorId));
+      notificar("Colaborador adicionado");
+      setNovoColaboradorId("");
+      carregar();
+    } catch (err) {
+      notificar(err.response?.data?.erro || "Não foi possível adicionar o colaborador", "erro");
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  async function removerColaborador(colaborador) {
+    setEnviando(true);
+    try {
+      await ticketService.removerColaborador(id, colaborador.id);
+      notificar("Colaborador removido");
+      carregar();
+    } catch (err) {
+      notificar(err.response?.data?.erro || "Não foi possível remover o colaborador", "erro");
+    } finally {
+      setEnviando(false);
+    }
+  }
+
   async function atribuir(tecnicoId) {
     await ticketService.atribuir(id, tecnicoId);
     notificar("Chamado atribuído");
@@ -156,6 +186,13 @@ export default function TicketDetalhe() {
   }
 
   if (!ticket) return <p className="text-sm text-gray-500">Carregando…</p>;
+
+  const colaboradores = ticket.colaboradores ?? [];
+  // Mesmas travas da API: chamado fechado ou parado na aprovação do gestor.
+  const podeMexerEmColaboradores = podeGerenciar && ticket.status !== "FECHADO" && !bloqueadoPorAprovacao(ticket);
+  // Quem ainda pode entrar: nem o responsável, nem o solicitante, nem quem já colabora.
+  const idsForaDaLista = new Set([ticket.tecnico?.id, ticket.solicitante?.id, ...colaboradores.map((c) => c.id)]);
+  const candidatosColaborador = atendentes.filter((a) => !idsForaDaLista.has(a.id));
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -307,6 +344,53 @@ export default function TicketDetalhe() {
             </form>
           )}
         </div>
+      )}
+
+      {(colaboradores.length > 0 || podeMexerEmColaboradores) && (
+        <section aria-labelledby="titulo-colaboradores" className="mb-6 rounded-lg border border-gray-200 bg-white p-4">
+          <h2 id="titulo-colaboradores" className="mb-2 text-sm font-semibold text-gray-900">Colaboradores</h2>
+          {colaboradores.length === 0 ? (
+            <p className="mb-3 text-sm text-gray-400">Nenhum colaborador neste chamado.</p>
+          ) : (
+            <ul className="mb-3 flex flex-col gap-1">
+              {colaboradores.map((c) => (
+                <li key={c.id} className="flex items-center justify-between text-sm text-gray-800">
+                  <span>{c.nome}</span>
+                  {podeMexerEmColaboradores && (
+                    <button
+                      type="button"
+                      className="text-xs font-medium text-red-600 hover:underline disabled:opacity-50"
+                      aria-label={`Remover ${c.nome} dos colaboradores`}
+                      onClick={() => removerColaborador(c)}
+                      disabled={enviando}
+                    >
+                      Remover
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {podeMexerEmColaboradores && (
+            <form onSubmit={adicionarColaborador} className="flex flex-wrap items-end gap-2">
+              <label className="flex flex-col gap-1 text-sm text-gray-700">
+                <span className="font-medium">Adicionar colaborador</span>
+                <select
+                  className="rounded-md border border-gray-300 px-2 py-1 text-sm"
+                  value={novoColaboradorId}
+                  onChange={(e) => setNovoColaboradorId(e.target.value)}
+                >
+                  <option value="">Selecione…</option>
+                  {candidatosColaborador.map((a) => (
+                    <option key={a.id} value={a.id}>{a.nome}</option>
+                  ))}
+                </select>
+              </label>
+              <Botao type="submit" disabled={enviando || !novoColaboradorId}>Adicionar</Botao>
+            </form>
+          )}
+        </section>
       )}
 
       {encaminhando && (

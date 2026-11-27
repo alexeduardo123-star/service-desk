@@ -2,13 +2,16 @@ import { Router } from "express";
 import * as tickets from "../controllers/tickets.controller.js";
 import * as comentarios from "../controllers/comentarios.controller.js";
 import { authMiddleware, requirePermissao } from "../middlewares/auth.js";
-import { validate } from "../middlewares/validate.js";
+import { validate, validateParams } from "../middlewares/validate.js";
 import {
+  adicionarColaboradorSchema,
   alterarStatusSchema,
   atribuirSchema,
+  colaboradorParamsSchema,
   encaminharSchema,
   rejeitarSchema,
   suspenderSchema,
+  ticketParamsSchema,
 } from "../schemas/ticket.schemas.js";
 
 const router = Router();
@@ -27,6 +30,22 @@ router.patch("/:id/encaminhar", requirePermissao("tickets.tratar"), validate(enc
 router.patch("/:id/aprovar", requirePermissao("tickets.aprovar"), tickets.aprovar);
 router.patch("/:id/rejeitar", requirePermissao("tickets.aprovar"), validate(rejeitarSchema), tickets.rejeitar);
 router.delete("/:id", requirePermissao("tickets.excluir"), tickets.excluir);
+
+const tratar = requirePermissao("tickets.tratar");
+router.get("/:id/colaboradores", tratar, validateParams(ticketParamsSchema), tickets.listarColaboradores);
+router.post(
+  "/:id/colaboradores",
+  tratar,
+  validateParams(ticketParamsSchema),
+  validate(adicionarColaboradorSchema),
+  tickets.adicionarColaborador
+);
+router.delete(
+  "/:id/colaboradores/:usuarioId",
+  tratar,
+  validateParams(colaboradorParamsSchema),
+  tickets.removerColaborador
+);
 
 router.get("/:ticketId/comentarios", comentarios.listar);
 router.post("/:ticketId/comentarios", comentarios.criar);

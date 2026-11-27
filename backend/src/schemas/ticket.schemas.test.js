@@ -1,6 +1,66 @@
 import { describe, it, expect, vi } from "vitest";
-import { validate } from "../middlewares/validate.js";
-import { alterarStatusSchema, atribuirSchema, encaminharSchema, rejeitarSchema, suspenderSchema } from "./ticket.schemas.js";
+import { validate, validateParams } from "../middlewares/validate.js";
+import {
+  adicionarColaboradorSchema,
+  alterarStatusSchema,
+  atribuirSchema,
+  colaboradorParamsSchema,
+  encaminharSchema,
+  rejeitarSchema,
+  suspenderSchema,
+  ticketParamsSchema,
+} from "./ticket.schemas.js";
+
+function runParams(schema, params) {
+  const req = { params };
+  const res = { status: vi.fn().mockReturnThis(), json: vi.fn() };
+  const next = vi.fn();
+  validateParams(schema)(req, res, next);
+  return { req, res, next };
+}
+
+describe("adicionarColaboradorSchema", () => {
+  it("aceita um id inteiro positivo", () => {
+    const { req, next } = run(adicionarColaboradorSchema, { usuarioId: 21 });
+    expect(next).toHaveBeenCalled();
+    expect(req.body).toEqual({ usuarioId: 21 });
+  });
+
+  it("exige o colaborador", () => {
+    const { res } = run(adicionarColaboradorSchema, {});
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({ erro: "Informe o colaborador" });
+  });
+
+  it("rejeita id inválido", () => {
+    for (const usuarioId of ["21", 0, -3, 1.5]) {
+      expect(run(adicionarColaboradorSchema, { usuarioId }).res.status).toHaveBeenCalledWith(400);
+    }
+  });
+});
+
+describe("parâmetros das rotas de colaboradores", () => {
+  it("converte os ids da URL em número", () => {
+    const { req, next } = runParams(colaboradorParamsSchema, { id: "7", usuarioId: "21" });
+    expect(next).toHaveBeenCalled();
+    expect(req.params).toEqual({ id: 7, usuarioId: 21 });
+    expect(runParams(ticketParamsSchema, { id: "7" }).req.params).toEqual({ id: 7 });
+  });
+
+  it("recusa id do chamado inválido", () => {
+    for (const id of ["abc", "0", "-1", "2.5"]) {
+      const { res, next } = runParams(ticketParamsSchema, { id });
+      expect(next).not.toHaveBeenCalled();
+      expect(res.json).toHaveBeenCalledWith({ erro: "ID do chamado inválido" });
+    }
+  });
+
+  it("recusa id do colaborador inválido", () => {
+    const { res } = runParams(colaboradorParamsSchema, { id: "7", usuarioId: "x" });
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({ erro: "ID do colaborador inválido" });
+  });
+});
 
 function run(schema, body) {
   const req = { body };

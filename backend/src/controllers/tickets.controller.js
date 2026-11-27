@@ -25,6 +25,20 @@ import {
   comentarioDeAprovacao,
   comentarioDeRejeicao,
 } from "../utils/aprovacao.js";
+import {
+  achatarColaboradores,
+  colaboradorQueViraResponsavel,
+  comentarioColaboradorAdicionado,
+  comentarioColaboradorRemovido,
+  erroAoAdicionarColaborador,
+  erroAoRemoverColaborador,
+} from "../utils/colaboradores.js";
+
+// Colaboradores como vêm do banco; achatarColaboradores deixa só { id, nome }.
+const colaboradoresSelect = {
+  select: { usuario: { select: { id: true, nome: true } } },
+  orderBy: { createdAt: "asc" },
+};
 
 const include = {
   solicitante: { select: { id: true, nome: true } },
@@ -44,18 +58,22 @@ function podeVer(ticket, user) {
 export const listar = asyncHandler(async (req, res) => {
   const where = montarFiltroTickets(req.query, req.user);
   const { orderBy } = montarOrdenacaoTickets(req.query);
-  const tickets = await prisma.ticket.findMany({ where, include, orderBy });
-  res.json(fechadosNoFim(tickets));
+  const tickets = await prisma.ticket.findMany({ where, include: { ...include, colaboradores: colaboradoresSelect }, orderBy });
+  res.json(fechadosNoFim(tickets).map(achatarColaboradores));
 });
 
 export const buscar = asyncHandler(async (req, res) => {
   const ticket = await prisma.ticket.findUnique({
     where: { id: Number(req.params.id) },
-    include: { ...include, comentarios: { include: { usuario: { select: { id: true, nome: true } } }, orderBy: { createdAt: "asc" } } },
+    include: {
+      ...include,
+      colaboradores: colaboradoresSelect,
+      comentarios: { include: { usuario: { select: { id: true, nome: true } } }, orderBy: { createdAt: "asc" } },
+    },
   });
   if (!ticket) return res.status(404).json({ erro: "Não encontrado" });
   if (!podeVer(ticket, req.user)) return res.status(403).json({ erro: "Acesso negado" });
-  res.json(ticket);
+  res.json(achatarColaboradores(ticket));
 });
 
 export const criar = asyncHandler(async (req, res) => {
@@ -184,11 +202,14 @@ export const atribuir = asyncHandler(async (req, res) => {
   const bloqueio = erroDeAprovacao(atual);
   if (bloqueio) return res.status(409).json({ erro: bloqueio });
 
-  const ticket = await prisma.ticket.update({
-    where: { id: atual.id },
-    data: { tecnicoId, status: "EM_ANDAMENTO" },
-    include,
-  });
+  const [ticket] = await prisma.$transaction([
+    prisma.ticket.update({
+      where: { id: atual.id },
+      data: { tecnicoId, status: "EM_ANDAMENTO" },
+      include,
+    }),
+    prisma.ticketColaborador.deleteMany({ where: colaboradorQueViraResponsavel(atual.id, tecnicoId) }),
+  ]);
   avisarTicketAtribuido(ticket, req.user);
   res.json(ticket);
 });
@@ -225,9 +246,75 @@ export const encaminhar = asyncHandler(async (req, res) => {
         mensagem: comentarioDeEncaminhamento(atual.tecnico, destino, motivo),
       },
     }),
+    prisma.ticketColaborador.deleteMany({ where: colaboradorQueViraResponsavel(atual.id, destino.id) }),
   ]);
   avisarTicketAtribuido(ticket, req.user);
   res.json(ticket);
+});
+
+async function colaboradoresDoTicket(ticketId) {
+  const registros = await prisma.ticketColaborador.findMany({ where: { ticketId }, ...colaboradoresSelect });
+  return registros.map((c) => c.usuario);
+}
+
+export const listarColaboradores = asyncHandler(async (req, res) => {
+  const ticket = await prisma.ticket.findUnique({ where: { id: req.params.id }, select: { id: true } });
+  if (!ticket) return res.status(404).json({ erro: "Não encontrado" });
+  res.json(await colaboradoresDoTicket(ticket.id));
+});
+
+// Adiciona um colaborador e registra no histórico; inclusão e comentário mudam
+// juntos. Devolve a lista atualizada de colaboradores.
+export const adicionarColaborador = asyncHandler(async (req, res) => {
+  const ticketId = req.params.id;
+  const { usuarioId } = req.body;
+  const ticket = await prisma.ticket.findUnique({
+    where: { id: ticketId },
+    include: { colaboradores: { select: { usuarioId: true } } },
+  });
+  if (!ticket) return res.status(404).json({ erro: "Não encontrado" });
+
+  const usuario = await prisma.usuario.findUnique({
+    where: { id: usuarioId },
+    select: { id: true, nome: true, papel: true, ativo: true },
+  });
+  if (!usuario) return res.status(404).json({ erro: "Usuário não encontrado" });
+  const erro =
+    erroDeAprovacao(ticket) || erroAoAdicionarColaborador(ticket, usuario, ticket.colaboradores.map((c) => c.usuarioId));
+  if (erro) return res.status(409).json({ erro });
+
+  await prisma.$transaction([
+    prisma.ticketColaborador.create({ data: { ticketId, usuarioId, adicionadoPorId: req.user.id } }),
+    prisma.comentario.create({
+      data: { ticketId, usuarioId: req.user.id, mensagem: comentarioColaboradorAdicionado(req.user, usuario) },
+    }),
+  ]);
+  res.status(201).json(await colaboradoresDoTicket(ticketId));
+});
+
+export const removerColaborador = asyncHandler(async (req, res) => {
+  const { id: ticketId, usuarioId } = req.params;
+  const ticket = await prisma.ticket.findUnique({
+    where: { id: ticketId },
+    select: { id: true, status: true, aprovacaoStatus: true },
+  });
+  if (!ticket) return res.status(404).json({ erro: "Não encontrado" });
+  const erro = erroDeAprovacao(ticket) || erroAoRemoverColaborador(ticket);
+  if (erro) return res.status(409).json({ erro });
+
+  const colaborador = await prisma.ticketColaborador.findUnique({
+    where: { ticketId_usuarioId: { ticketId, usuarioId } },
+    select: { id: true, usuario: { select: { id: true, nome: true } } },
+  });
+  if (!colaborador) return res.status(404).json({ erro: "Este usuário não é colaborador do chamado" });
+
+  await prisma.$transaction([
+    prisma.ticketColaborador.delete({ where: { id: colaborador.id } }),
+    prisma.comentario.create({
+      data: { ticketId, usuarioId: req.user.id, mensagem: comentarioColaboradorRemovido(req.user, colaborador.usuario) },
+    }),
+  ]);
+  res.json(await colaboradoresDoTicket(ticketId));
 });
 
 // Carrega o chamado e confere se este usuário pode decidir a aprovação.

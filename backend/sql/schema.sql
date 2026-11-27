@@ -202,6 +202,16 @@ CREATE TABLE "agendamentos" (
     "updatedAt"    TIMESTAMP(3) NOT NULL
 );
 
+-- Atendentes que ajudam no chamado sem ser o responsável ("tecnicoId").
+CREATE TABLE "ticket_colaboradores" (
+    "id"              SERIAL PRIMARY KEY,
+    "ticketId"        INTEGER NOT NULL REFERENCES "tickets" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+    "usuarioId"       INTEGER NOT NULL REFERENCES "usuarios" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+    "adicionadoPorId" INTEGER REFERENCES "usuarios" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
+    "createdAt"       TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE ("ticketId", "usuarioId")
+);
+
 CREATE INDEX "idx_tickets_solicitante" ON "tickets" ("solicitanteId");
 CREATE INDEX "idx_tickets_tecnico" ON "tickets" ("tecnicoId");
 CREATE INDEX "idx_tickets_status" ON "tickets" ("status");
@@ -215,3 +225,4 @@ CREATE INDEX "idx_assuntos_responsavel" ON "assuntos" ("responsavelId");
 CREATE INDEX "idx_tickets_assunto" ON "tickets" ("assuntoId");
 CREATE INDEX "idx_agendamentos_atendente_inicio" ON "agendamentos" ("atendenteId", "inicio");
 CREATE INDEX "idx_agendamentos_ticket" ON "agendamentos" ("ticketId");
+CREATE INDEX "idx_ticket_colaboradores_usuario" ON "ticket_colaboradores" ("usuarioId");

@@ -14,4 +14,10 @@ export default {
   atribuir: async (id, tecnicoId) => (await api.patch(`/tickets/${id}/atribuir`, { tecnicoId })).data,
   encaminhar: async (id, tecnicoId, motivo) =>
     (await api.patch(`/tickets/${id}/encaminhar`, { tecnicoId, motivo })).data,
+  // As três devolvem a lista de colaboradores ([{ id, nome }]).
+  listarColaboradores: async (id) => (await api.get(`/tickets/${id}/colaboradores`)).data,
+  adicionarColaborador: async (id, usuarioId) =>
+    (await api.post(`/tickets/${id}/colaboradores`, { usuarioId })).data,
+  removerColaborador: async (id, usuarioId) =>
+    (await api.delete(`/tickets/${id}/colaboradores/${usuarioId}`)).data,
 };

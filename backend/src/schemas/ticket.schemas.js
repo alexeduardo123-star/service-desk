@@ -26,6 +26,22 @@ export const atribuirSchema = z.object({
   tecnicoId: z.number({ message: "tecnicoId é obrigatório" }).int().positive("tecnicoId inválido"),
 });
 
+const idPositivo = (mensagem) => z.coerce.number({ message: mensagem }).int(mensagem).positive(mensagem);
+
+// Parâmetros de /tickets/:id/colaboradores e /tickets/:id/colaboradores/:usuarioId.
+export const ticketParamsSchema = z.object({ id: idPositivo("ID do chamado inválido") });
+
+export const colaboradorParamsSchema = ticketParamsSchema.extend({
+  usuarioId: idPositivo("ID do colaborador inválido"),
+});
+
+export const adicionarColaboradorSchema = z.object({
+  usuarioId: z
+    .number({ message: "Informe o colaborador" })
+    .int("Colaborador inválido")
+    .positive("Colaborador inválido"),
+});
+
 export const encaminharSchema = z.object({
   tecnicoId: z
     .number({ message: "Informe o atendente de destino" })

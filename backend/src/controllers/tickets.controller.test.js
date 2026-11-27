@@ -2,7 +2,14 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 vi.mock("../config/prisma.js", () => ({
   default: {
-    ticket: { findUnique: vi.fn(), update: vi.fn(), create: vi.fn() },
+    ticket: { findUnique: vi.fn(), findMany: vi.fn(), update: vi.fn(), create: vi.fn() },
+    ticketColaborador: {
+      findMany: vi.fn(),
+      findUnique: vi.fn(),
+      create: vi.fn(),
+      delete: vi.fn(),
+      deleteMany: vi.fn(),
+    },
     assunto: { findUnique: vi.fn() },
     categoria: { findUnique: vi.fn() },
     usuario: { findUnique: vi.fn() },
@@ -24,7 +31,21 @@ vi.mock("../utils/eventosTicket.js", async (original) => ({
 
 const prisma = (await import("../config/prisma.js")).default;
 const eventos = await import("../utils/eventosTicket.js");
-const { criar, suspender, retomar, alterarStatus, atribuir, encaminhar, aprovar, rejeitar } = await import("./tickets.controller.js");
+const {
+  criar,
+  buscar,
+  listar,
+  suspender,
+  retomar,
+  alterarStatus,
+  atribuir,
+  encaminhar,
+  aprovar,
+  rejeitar,
+  listarColaboradores,
+  adicionarColaborador,
+  removerColaborador,
+} = await import("./tickets.controller.js");
 
 const TECNICO = { id: 20, nome: "Téc", papel: "TECNICO" };
 const TICKET = { id: 7, titulo: "VPN", status: "EM_ANDAMENTO", solicitanteId: 10, tecnicoId: 20 };
@@ -48,6 +69,7 @@ beforeEach(() => {
   prisma.ticket.update.mockImplementation(({ data }) => Promise.resolve({ ...TICKET, ...data }));
   prisma.comentario.create.mockResolvedValue({ id: 1 });
   prisma.categoria.findUnique.mockResolvedValue({ exigeAprovacao: false });
+  prisma.ticketColaborador.deleteMany.mockResolvedValue({ count: 0 });
 });
 
 describe("tickets.controller: suspender", () => {
@@ -207,6 +229,177 @@ describe("tickets.controller: encaminhar", () => {
     await encaminhar(req({ tecnicoId: 21, motivo: "algum motivo" }), res, throwingNext);
 
     expect(res.status).toHaveBeenCalledWith(404);
+  });
+
+  it("se o destino era colaborador, sai da lista na mesma transação", async () => {
+    prisma.ticket.findUnique.mockResolvedValue(COM_TECNICO);
+    prisma.usuario.findUnique.mockResolvedValue(BRUNO);
+
+    await encaminhar(req({ tecnicoId: 21, motivo: "especialista em rede" }), mockRes(), throwingNext);
+
+    expect(prisma.ticketColaborador.deleteMany).toHaveBeenCalledWith({ where: { ticketId: 7, usuarioId: 21 } });
+    expect(prisma.$transaction.mock.calls[0][0]).toHaveLength(3);
+  });
+});
+
+describe("tickets.controller: colaboradores", () => {
+  const BRUNO = { id: 21, nome: "Bruno", papel: "TECNICO", ativo: true };
+  const reqColab = ({ params = {}, body = {} } = {}) => ({ params: { id: 7, ...params }, body, user: TECNICO });
+  const LISTA = [{ usuario: { id: 21, nome: "Bruno" } }];
+
+  beforeEach(() => {
+    prisma.ticketColaborador.findMany.mockResolvedValue(LISTA);
+    prisma.ticketColaborador.create.mockResolvedValue({ id: 1 });
+    prisma.ticketColaborador.delete.mockResolvedValue({ id: 1 });
+  });
+
+  it("buscar e listar devolvem os colaboradores só com id e nome", async () => {
+    const comColab = { ...TICKET, colaboradores: [{ usuario: { id: 21, nome: "Bruno" } }], comentarios: [] };
+    prisma.ticket.findUnique.mockResolvedValue(comColab);
+    prisma.ticket.findMany.mockResolvedValue([comColab]);
+    const resBuscar = mockRes();
+    const resListar = mockRes();
+
+    await buscar(req(), resBuscar, throwingNext);
+    await listar({ query: {}, user: TECNICO }, resListar, throwingNext);
+
+    expect(prisma.ticket.findUnique.mock.calls[0][0].include.colaboradores).toBeDefined();
+    expect(prisma.ticket.findMany.mock.calls[0][0].include.colaboradores).toBeDefined();
+    expect(resBuscar.json.mock.calls[0][0].colaboradores).toEqual([{ id: 21, nome: "Bruno" }]);
+    expect(resListar.json.mock.calls[0][0][0].colaboradores).toEqual([{ id: 21, nome: "Bruno" }]);
+  });
+
+  it("lista os colaboradores do chamado", async () => {
+    prisma.ticket.findUnique.mockResolvedValue({ id: 7 });
+    const res = mockRes();
+
+    await listarColaboradores(reqColab(), res, throwingNext);
+
+    expect(res.json).toHaveBeenCalledWith([{ id: 21, nome: "Bruno" }]);
+  });
+
+  it("listar colaboradores de chamado inexistente dá 404", async () => {
+    prisma.ticket.findUnique.mockResolvedValue(null);
+    const res = mockRes();
+
+    await listarColaboradores(reqColab(), res, throwingNext);
+
+    expect(res.status).toHaveBeenCalledWith(404);
+  });
+
+  it("adiciona, registra no histórico na mesma transação e devolve a lista", async () => {
+    prisma.ticket.findUnique.mockResolvedValue({ ...TICKET, colaboradores: [] });
+    prisma.usuario.findUnique.mockResolvedValue(BRUNO);
+    const res = mockRes();
+
+    await adicionarColaborador(reqColab({ body: { usuarioId: 21 } }), res, throwingNext);
+
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+    expect(prisma.ticketColaborador.create).toHaveBeenCalledWith({ data: { ticketId: 7, usuarioId: 21, adicionadoPorId: 20 } });
+    expect(prisma.comentario.create).toHaveBeenCalledWith({
+      data: { ticketId: 7, usuarioId: 20, mensagem: "Téc adicionou Bruno como colaborador" },
+    });
+    expect(res.status).toHaveBeenCalledWith(201);
+    expect(res.json).toHaveBeenCalledWith([{ id: 21, nome: "Bruno" }]);
+  });
+
+  it("recusa com 409 quando a regra não deixa adicionar", async () => {
+    const casos = [
+      [{ ...TICKET, status: "FECHADO", colaboradores: [] }, BRUNO, "Chamado fechado não aceita mudanças nos colaboradores"],
+      [{ ...TICKET, colaboradores: [{ usuarioId: 21 }] }, BRUNO, "Este usuário já é colaborador do chamado"],
+      [{ ...TICKET, colaboradores: [] }, { ...BRUNO, id: 20 }, "O atendente responsável não pode ser colaborador"],
+      [{ ...TICKET, colaboradores: [] }, { ...BRUNO, id: 10 }, "O solicitante do chamado não pode ser colaborador"],
+      [{ ...TICKET, colaboradores: [] }, { ...BRUNO, ativo: false }, "Usuário inativo não pode ser colaborador"],
+    ];
+    for (const [ticket, usuario, mensagem] of casos) {
+      prisma.ticket.findUnique.mockResolvedValue(ticket);
+      prisma.usuario.findUnique.mockResolvedValue(usuario);
+      const res = mockRes();
+
+      await adicionarColaborador(reqColab({ body: { usuarioId: usuario.id } }), res, throwingNext);
+
+      expect(res.status).toHaveBeenCalledWith(409);
+      expect(res.json).toHaveBeenCalledWith({ erro: mensagem });
+    }
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it("404 para chamado ou usuário inexistente ao adicionar", async () => {
+    prisma.ticket.findUnique.mockResolvedValue(null);
+    const semChamado = mockRes();
+    await adicionarColaborador(reqColab({ body: { usuarioId: 21 } }), semChamado, throwingNext);
+    expect(semChamado.status).toHaveBeenCalledWith(404);
+
+    prisma.ticket.findUnique.mockResolvedValue({ ...TICKET, colaboradores: [] });
+    prisma.usuario.findUnique.mockResolvedValue(null);
+    const semUsuario = mockRes();
+    await adicionarColaborador(reqColab({ body: { usuarioId: 99 } }), semUsuario, throwingNext);
+    expect(semUsuario.status).toHaveBeenCalledWith(404);
+    expect(semUsuario.json).toHaveBeenCalledWith({ erro: "Usuário não encontrado" });
+  });
+
+  it("remove, registra no histórico na mesma transação e devolve a lista", async () => {
+    prisma.ticket.findUnique.mockResolvedValue({ id: 7, status: "EM_ANDAMENTO" });
+    prisma.ticketColaborador.findUnique.mockResolvedValue({ id: 5, usuario: { id: 21, nome: "Bruno" } });
+    prisma.ticketColaborador.findMany.mockResolvedValue([]);
+    const res = mockRes();
+
+    await removerColaborador(reqColab({ params: { usuarioId: 21 } }), res, throwingNext);
+
+    expect(prisma.ticketColaborador.findUnique.mock.calls[0][0].where).toEqual({ ticketId_usuarioId: { ticketId: 7, usuarioId: 21 } });
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+    expect(prisma.ticketColaborador.delete).toHaveBeenCalledWith({ where: { id: 5 } });
+    expect(prisma.comentario.create).toHaveBeenCalledWith({
+      data: { ticketId: 7, usuarioId: 20, mensagem: "Téc removeu Bruno dos colaboradores" },
+    });
+    expect(res.json).toHaveBeenCalledWith([]);
+  });
+
+  it("não remove de chamado fechado", async () => {
+    prisma.ticket.findUnique.mockResolvedValue({ id: 7, status: "FECHADO" });
+    const res = mockRes();
+
+    await removerColaborador(reqColab({ params: { usuarioId: 21 } }), res, throwingNext);
+
+    expect(res.status).toHaveBeenCalledWith(409);
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it("aprovação pendente do gestor trava adicionar e remover", async () => {
+    prisma.ticket.findUnique.mockResolvedValue({ ...TICKET, aprovacaoStatus: "PENDENTE", colaboradores: [] });
+    prisma.usuario.findUnique.mockResolvedValue(BRUNO);
+    const resAdicionar = mockRes();
+    const resRemover = mockRes();
+
+    await adicionarColaborador(reqColab({ body: { usuarioId: 21 } }), resAdicionar, throwingNext);
+    await removerColaborador(reqColab({ params: { usuarioId: 21 } }), resRemover, throwingNext);
+
+    for (const res of [resAdicionar, resRemover]) {
+      expect(res.status).toHaveBeenCalledWith(409);
+      expect(res.json).toHaveBeenCalledWith({ erro: "Chamado aguardando aprovação do gestor" });
+    }
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it("404 ao remover quem não é colaborador", async () => {
+    prisma.ticket.findUnique.mockResolvedValue({ id: 7, status: "EM_ANDAMENTO" });
+    prisma.ticketColaborador.findUnique.mockResolvedValue(null);
+    const res = mockRes();
+
+    await removerColaborador(reqColab({ params: { usuarioId: 21 } }), res, throwingNext);
+
+    expect(res.status).toHaveBeenCalledWith(404);
+    expect(res.json).toHaveBeenCalledWith({ erro: "Este usuário não é colaborador do chamado" });
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it("atribuir também tira o novo responsável dos colaboradores", async () => {
+    prisma.ticket.findUnique.mockResolvedValue({ ...TICKET, aprovacaoStatus: "NAO_EXIGIDA" });
+
+    await atribuir(req({ tecnicoId: 21 }), mockRes(), throwingNext);
+
+    expect(prisma.ticketColaborador.deleteMany).toHaveBeenCalledWith({ where: { ticketId: 7, usuarioId: 21 } });
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
   });
 });
 
